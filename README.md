@@ -47,6 +47,9 @@ I wanted something closer to Windows Task Manager (or System Informer) on Linux,
   - Turning off a system entry writes your own copy with `Hidden=true` instead of touching `/etc`. If an entry is a link to an app launcher, purrtop swaps the link for a real file, so the launcher and your app menu stay as they were
   - Status shows whether each one is running, failed or finished. This comes from systemd's autostart units, which COSMIC, KDE and GNOME all use
   - Start or stop an entry right now from the right-click menu, open its file location, or copy its command
+  - Add an installed app to startup from the Add button, which has a search box. purrtop links the app's launcher into your autostart folder
+  - Remove one of your own entries from the right-click menu or with `Delete`. Links just get deleted, and real files go to the Trash in case you want them back. System entries can't be removed, but you can turn them off
+  - When some of your entries point at apps or files that are gone (an uninstalled AppImage, say), a Clean up button shows up and removes them in one go
   - Entries for other desktops (KDE-only stuff on COSMIC, for example) are folded into a "Not started here" group
 - A Users page that shows who's signed in and what every account is running:
   - CPU, memory and process count per account, with signed-in people first and system accounts (root, `systemd-*` and friends) folded into their own group
@@ -106,7 +109,7 @@ On the Performance page, `Up` and `Down` move through the device list.
 
 On the System Info page, `Ctrl+Tab` and `Ctrl+Shift+Tab` switch tabs.
 
-On the Startup apps page, `Up`, `Down`, `Home` and `End` move the selection, `Space` turns the selected entry on or off, and `F5` reads the folders again.
+On the Startup apps page, `Up`, `Down`, `Home` and `End` move the selection, `Space` turns the selected entry on or off, `Delete` removes it, and `F5` reads the folders again.
 
 On the Services page, `Up`, `Down`, `Page Up`, `Page Down`, `Home` and `End` move the selection, and `Ctrl+F` jumps to the filter.
 

@@ -57,6 +57,10 @@
 - Detail strip with the file, where it links to, the unit, delay and description
 - Right-click menu: turn on or off, start now, stop now, open file location, copy command
 - Keyboard: arrows, Home and End to move, Space to turn the selected entry on or off, F5 to refresh
+- Add button opens a searchable list of your installed apps. Pick one and purrtop links its launcher into `~/.config/autostart`, so it starts at your next login
+- Remove (right-click or `Delete`) takes one of your own entries out of startup after asking. Links are deleted and real files go to the Trash. System entries can only be turned off
+- Entries whose command points at a program that isn't installed now show as Program missing, not just ones with a missing `TryExec`
+- A Clean up button shows up when your own entries point at apps or files that are gone, and removes them all after one confirmation
 
 ### 👥 Users
 - New Users page with everyone signed in, then a folded "System accounts" group for root, `systemd-*` and the other service accounts that have something running

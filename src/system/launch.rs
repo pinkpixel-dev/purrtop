@@ -6,7 +6,7 @@ use super::autostart::find_program;
 
 /// The program a command line starts: its first word, skipping `NAME=value`
 /// settings in front of it. A quoted first word keeps its spaces.
-fn program(command: &str) -> Option<&str> {
+pub(super) fn program(command: &str) -> Option<&str> {
     let mut rest = command.trim_start();
     while !rest.is_empty() {
         let (word, after) = match rest.chars().next() {

@@ -14,6 +14,8 @@ use std::process::Command;
 
 use serde::Deserialize;
 
+use super::{disk_scan, launch};
+
 const GROUP: &str = "[Desktop Entry]";
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -44,7 +46,7 @@ pub enum Status {
     Starting,
     Failed,
     NotRunning,
-    /// `TryExec` names a program that isn't installed, so it never starts.
+    /// `TryExec` or the command names a program that isn't installed, so it never starts.
     ProgramMissing,
     /// The entry is a link to a file that's gone.
     FileMissing,
@@ -101,16 +103,30 @@ impl Entry {
     pub fn can_stop(&self) -> bool {
         matches!(self.status, Status::Running | Status::Starting)
     }
+
+    /// A link to a file that's gone, or a program that isn't installed.
+    pub fn is_broken(&self) -> bool {
+        matches!(self.status, Status::FileMissing | Status::ProgramMissing)
+    }
+
+    /// Only your own entries. A system entry is turned off instead.
+    pub fn can_remove(&self) -> bool {
+        self.source == Source::User
+    }
 }
 
 /// Every autostart entry, sorted by name, with unit states from `systemctl`.
 pub fn read() -> Vec<Entry> {
-    let desktops: Vec<String> = std::env::var("XDG_CURRENT_DESKTOP").unwrap_or_default().split(':').filter(|d| !d.is_empty()).map(String::from).collect();
+    let desktops = current_desktops();
     let units = read_units().unwrap_or_default();
     let generated = generator_dir();
     let mut entries = read_dirs(&user_dir(), &system_dirs(), &desktops, &units, generated.as_deref());
     entries.sort_by_cached_key(|entry| entry.name.to_lowercase());
     entries
+}
+
+pub(super) fn current_desktops() -> Vec<String> {
+    std::env::var("XDG_CURRENT_DESKTOP").unwrap_or_default().split(':').filter(|d| !d.is_empty()).map(String::from).collect()
 }
 
 fn read_dirs(user: &Option<PathBuf>, system: &[PathBuf], desktops: &[String], units: &HashMap<String, (String, String)>, generated: Option<&Path>) -> Vec<Entry> {
@@ -141,7 +157,7 @@ fn read_dirs(user: &Option<PathBuf>, system: &[PathBuf], desktops: &[String], un
         .collect()
 }
 
-fn desktop_files(dir: &Path) -> Vec<String> {
+pub(super) fn desktop_files(dir: &Path) -> Vec<String> {
     let Ok(entries) = std::fs::read_dir(dir) else {
         return Vec::new();
     };
@@ -173,7 +189,8 @@ fn entry(id: String, path: PathBuf, source: Source, desktops: &[String], unit_st
     let get = |key: &str| keys.get(key).map(String::as_str).filter(|value| !value.is_empty());
     let truthy = |key: &str| get(key).is_some_and(|value| value.eq_ignore_ascii_case("true"));
     let enabled = !truthy("Hidden") && !get("X-GNOME-Autostart-enabled").is_some_and(|value| value.eq_ignore_ascii_case("false"));
-    let status = if get("TryExec").is_some_and(|program| find_program(program).is_none()) {
+    let missing = |program: &str| find_program(program).is_none();
+    let status = if get("TryExec").is_some_and(missing) || get("Exec").and_then(launch::program).is_some_and(missing) {
         Status::ProgramMissing
     } else {
         unit_state.map_or(Status::NotRunning, |(active, sub)| unit_status(active, sub))
@@ -197,7 +214,7 @@ fn entry(id: String, path: PathBuf, source: Source, desktops: &[String], unit_st
 }
 
 /// Keys of the `[Desktop Entry]` group. Translated keys like `Name[fr]` are skipped.
-fn parse(text: &str) -> HashMap<String, String> {
+pub(super) fn parse(text: &str) -> HashMap<String, String> {
     let mut keys = HashMap::new();
     let mut in_group = false;
     for line in text.lines().map(str::trim) {
@@ -219,7 +236,7 @@ fn parse(text: &str) -> HashMap<String, String> {
 }
 
 /// Why an entry never starts on the current desktop, or `None` when it does.
-fn elsewhere(keys: &HashMap<String, String>, desktops: &[String]) -> Option<String> {
+pub(super) fn elsewhere(keys: &HashMap<String, String>, desktops: &[String]) -> Option<String> {
     let list = |key: &str| keys.get(key).map(|value| value.split(';').filter(|d| !d.is_empty()).map(String::from).collect::<Vec<_>>());
     let here = |names: &[String]| names.iter().any(|name| desktops.contains(name));
     if let Some(only) = list("OnlyShowIn").filter(|only| !here(only)) {
@@ -287,7 +304,7 @@ fn generator_dir() -> Option<PathBuf> {
     std::env::var_os("XDG_RUNTIME_DIR").map(|dir| PathBuf::from(dir).join("systemd/generator.late"))
 }
 
-fn user_dir() -> Option<PathBuf> {
+pub(super) fn user_dir() -> Option<PathBuf> {
     std::env::var_os("XDG_CONFIG_HOME")
         .filter(|dir| !dir.is_empty())
         .map(PathBuf::from)
@@ -350,6 +367,18 @@ fn set_key(text: &str, key: &str, value: &str) -> Option<String> {
     let mut joined = out.join("\n");
     joined.push('\n');
     Some(joined)
+}
+
+/// Removes one of your entries. A link is deleted, since the launcher it points
+/// to stays put. A real file goes to the Trash so it can be restored.
+pub fn remove(entry: &Entry) -> Result<(), String> {
+    if !entry.can_remove() {
+        return Err("It's a system entry, so turn it off instead".into());
+    }
+    if entry.link.is_some() {
+        return std::fs::remove_file(&entry.path).map_err(|err| err.to_string());
+    }
+    disk_scan::move_to_trash(&entry.path)
 }
 
 /// Starts or stops the entry's unit now. Blocks; call it off the UI thread.
@@ -472,6 +501,40 @@ mod tests {
         assert!(std::fs::read_link(user.join("app.desktop")).is_err(), "the link became a real file");
         let entries = read_scratch(&user, &system);
         assert!(!entries.iter().find(|entry| entry.id == "app.desktop").unwrap().enabled);
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn a_missing_program_marks_the_entry_broken() {
+        let (root, user, system) = scratch("missing");
+        std::fs::write(user.join("gone.desktop"), "[Desktop Entry]\nName=Gone\nExec=\"/nowhere/purrtop test app\" --tray\n").unwrap();
+        std::fs::write(user.join("here.desktop"), "[Desktop Entry]\nName=Here\nExec=sh -c true\n").unwrap();
+        let entries = read_scratch(&user, &system);
+        let status = |id: &str| entries.iter().find(|entry| entry.id == id).unwrap().status;
+        assert_eq!(status("gone.desktop"), Status::ProgramMissing);
+        assert_eq!(status("here.desktop"), Status::NotRunning);
+        assert!(entries.iter().find(|entry| entry.id == "gone.desktop").unwrap().is_broken());
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn removing_a_link_deletes_only_the_link() {
+        let (root, user, system) = scratch("remove");
+        let launcher = root.join("app.desktop");
+        std::fs::write(&launcher, "[Desktop Entry]\nName=App\nExec=sh\n").unwrap();
+        std::os::unix::fs::symlink(&launcher, user.join("app.desktop")).unwrap();
+        std::os::unix::fs::symlink(root.join("gone.desktop"), user.join("gone.desktop")).unwrap();
+        std::fs::write(system.join("tray.desktop"), "[Desktop Entry]\nName=Tray\nExec=sh\n").unwrap();
+
+        for entry in read_scratch(&user, &system) {
+            match entry.source {
+                Source::User => remove(&entry).unwrap(),
+                _ => assert!(remove(&entry).is_err(), "system entries are never removed"),
+            }
+        }
+        assert!(launcher.exists());
+        assert!(system.join("tray.desktop").exists());
+        assert_eq!(read_scratch(&user, &system).len(), 1);
         std::fs::remove_dir_all(root).unwrap();
     }
 

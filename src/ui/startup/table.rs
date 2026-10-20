@@ -242,6 +242,8 @@ impl TableDelegate for StartupTable {
             .menu_with_disabled("Start now", Box::new(StartNow), !entry.can_start())
             .menu_with_disabled("Stop now", Box::new(StopNow), !entry.can_stop())
             .separator()
+            .menu_with_disabled("Remove", Box::new(Remove), !entry.can_remove())
+            .separator()
             .menu_with_disabled("Open file location", Box::new(OpenFileLocation), missing)
             .menu_with_disabled("Copy command", Box::new(CopyCommand), entry.exec.is_none())
     }

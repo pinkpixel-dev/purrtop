@@ -16,6 +16,7 @@ pub mod hardware;
 pub mod history;
 pub mod io;
 pub mod launch;
+pub mod launchers;
 pub mod memory;
 pub mod monitor;
 pub mod net_info;
