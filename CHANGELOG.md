@@ -5,6 +5,7 @@
 ### 🐱 App shell
 - Main window with a title bar, File / View / Help menus, a page sidebar and a status bar
 - Help → About dialog with the version and a link to pinkpixel.dev
+- purrtop logo in the title bar and About dialog
 
 ### 📊 Summary
 - Live CPU, memory, swap, process count and uptime tiles, sampled from `/proc` every second

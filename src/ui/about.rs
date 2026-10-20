@@ -1,12 +1,12 @@
-use gpui_kit::assets::IconName as CatalogIcon;
 use gpui_kit::component::StyledExt as _;
 use gpui_kit::component::button::{Button, ButtonVariants as _};
-use gpui_kit::component::{ActiveTheme as _, Icon, Sizable as _, WindowExt as _, h_flex, v_flex};
+use gpui_kit::component::{ActiveTheme as _, WindowExt as _, h_flex, v_flex};
 use gpui_kit::*;
 
-use crate::app_info;
+use crate::{app_info, assets};
 
 const DIALOG_WIDTH: f32 = 360.;
+const LOGO_SIZE: f32 = 72.;
 
 pub fn open(window: &mut Window, cx: &mut App) {
     if window.has_active_dialog(cx) {
@@ -21,7 +21,7 @@ pub fn open(window: &mut Window, cx: &mut App) {
                     .items_center()
                     .gap_2()
                     .py_2()
-                    .child(Icon::new(CatalogIcon::Cat).large().text_color(theme.primary))
+                    .child(img(assets::LOGO).size(px(LOGO_SIZE)))
                     .child(
                         h_flex()
                             .gap_2()

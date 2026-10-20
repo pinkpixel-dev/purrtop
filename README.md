@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="logo.png" alt="purrtop logo" width="250">
+</p>
+
 # purrtop
 
 Keep your system purring.
@@ -6,7 +10,7 @@ purrtop is a colorful system monitor and task manager for Linux. It's a desktop 
 
 I wanted something closer to Windows Task Manager (or System Informer) on Linux, but prettier, with themes that actually have some color in them.
 
-> purrtop is early. Right now it has the app shell, a live Summary page, and eight themes. Processes, Performance, Services, Disk Space and the rest are on the way. See [DOCS/ROADMAP.md](DOCS/ROADMAP.md).
+> purrtop is early. Right now it has the app shell, a live Summary page, and eight themes. Processes, Performance, Services, Disk Space and the rest are on the way.
 
 ## What it does right now
 
