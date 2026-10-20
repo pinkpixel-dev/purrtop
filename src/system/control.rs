@@ -151,7 +151,8 @@ impl AdminAction {
     }
 }
 
-fn run_pkexec(command: &[String]) -> Result<String, String> {
+/// Runs `command` as root through pkexec and returns what it printed. Blocks.
+pub fn run_pkexec(command: &[String]) -> Result<String, String> {
     let output = Command::new("pkexec").args(command).output().map_err(|err| format!("Couldn't start pkexec: {err}"))?;
     match output.status.code() {
         Some(0) => Ok(String::from_utf8_lossy(&output.stdout).into_owned()),

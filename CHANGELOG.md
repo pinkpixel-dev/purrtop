@@ -78,6 +78,15 @@
 - Filter by name or description (`Ctrl+F`)
 - Keyboard: arrows, Page Up and Page Down, Home and End to move
 
+### 🔌 Ports
+- New Ports page listing every listening TCP port and bound UDP port, with its protocol, address, process, PID and user
+- Read straight from `/proc/net` every 2 seconds while the page is showing
+- Ports held by other users' processes (root, system services) still show the owning account. "Find hidden owners" looks up their processes as admin through polkit, once, and keeps them until the port closes
+- Right-click: end process, kill process (both ask first), find process as admin, open in Processes, copy address. Other users' processes go through polkit
+- Detail strip with the full address, who can reach it (this computer only, every network, and so on), every PID sharing the socket, and the command line
+- Filter by port, address, process or user (`Ctrl+F`)
+- Keyboard: arrows, Page Up and Page Down, Home and End to move, Delete to end, Shift+Delete to kill
+
 ### ⚡ Processes
 - Other pages can send you to a process: it gets selected, its group and parents are opened, and the list scrolls to it
 

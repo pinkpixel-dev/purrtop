@@ -10,7 +10,7 @@ purrtop is a colorful system monitor and task manager for Linux. It's a desktop 
 
 I wanted something closer to Windows Task Manager (or System Informer) on Linux, but prettier, with themes that actually have some color in them.
 
-> purrtop is early. Right now it has the app shell, a live Summary dashboard, a Performance page for CPU, memory, battery, thermals, disks, network and GPUs, the Processes page, a System Info page with Hardware, Software, Network and Diagnostics tabs, a Startup apps page, a Users page, a Services page, and eight themes. Disk Space and the rest are on the way.
+> purrtop is early. Right now it has the app shell, a live Summary dashboard, a Performance page for CPU, memory, battery, thermals, disks, network and GPUs, the Processes page, a System Info page with Hardware, Software, Network and Diagnostics tabs, a Startup apps page, a Users page, a Services page, a Ports page, and eight themes. Disk Space and the rest are on the way.
 
 ## What it does right now
 
@@ -60,6 +60,11 @@ I wanted something closer to Windows Task Manager (or System Informer) on Linux,
   - Right-click to start, stop, restart, enable or disable a service, or jump to its main process on the Processes page
   - System services ask for your password through polkit, and systemd's default policy remembers it for a few minutes
   - The detail strip shows the unit file, when it last changed state, and the last few lines of its log
+- A Ports page that shows what's listening:
+  - Every listening TCP port and bound UDP port, with the address, process, PID and user
+  - Right-click to end or kill the process holding a port (it asks first), or jump to it on the Processes page
+  - Ports held by root or system services show who owns them, but Linux hides which process has them unless you're root. Click "Find hidden owners" to look them up once through polkit
+  - The detail strip shows whether a port is reachable from this computer only or from every network, plus the full command line
 - File → Run new task (`Ctrl+N`) to start any command, like Windows Task Manager's Run dialog. It keeps running after you close purrtop
 - Status bar with the current readings and a quick theme picker
 - Eight built-in themes: Neon, Rainbow, Cotton Candy, Sunset, Matcha, Midnight, Phosphor and Graphite
@@ -97,6 +102,8 @@ On the System Info page, `Ctrl+Tab` and `Ctrl+Shift+Tab` switch tabs.
 On the Startup apps page, `Up`, `Down`, `Home` and `End` move the selection, `Space` turns the selected entry on or off, and `F5` reads the folders again.
 
 On the Services page, `Up`, `Down`, `Page Up`, `Page Down`, `Home` and `End` move the selection, and `Ctrl+F` jumps to the filter.
+
+On the Ports page, `Up`, `Down`, `Page Up`, `Page Down`, `Home` and `End` move the selection, `Delete` ends the selected port's process and `Shift+Delete` kills it (both ask first), and `Ctrl+F` jumps to the filter.
 
 On the Users page, `Up`, `Down`, `Home` and `End` move the selection, and `Right` / `Left` open or close a user's processes (Left on a process jumps back to its user).
 

@@ -2,6 +2,7 @@ mod about;
 mod charts;
 mod page;
 mod performance;
+mod ports;
 mod processes;
 mod run_task;
 mod services;
@@ -22,6 +23,7 @@ use serde::Deserialize;
 pub use page::Page;
 
 use self::performance::PerformancePage;
+use self::ports::PortsPage;
 use self::processes::ProcessesPage;
 use self::services::ServicesPage;
 use self::startup::StartupPage;
@@ -59,6 +61,7 @@ pub fn init(cx: &mut App) {
     startup::init(cx);
     users::init(cx);
     services::init(cx);
+    ports::init(cx);
     cx.on_action(|_: &Quit, cx| cx.quit());
     // App-wide so the menu bar and the status bar picker both reach it.
     cx.on_action(|action: &SwitchTheme, cx| {
@@ -77,6 +80,7 @@ pub struct Purrtop {
     startup: Entity<StartupPage>,
     users: Entity<UsersPage>,
     services: Entity<ServicesPage>,
+    ports: Entity<PortsPage>,
     menu_bar: Entity<AppMenuBar>,
     page: Page,
     _subscriptions: Vec<Subscription>,
@@ -91,6 +95,7 @@ impl Purrtop {
         let startup = cx.new(|cx| StartupPage::new(window, cx));
         let users = cx.new(|cx| UsersPage::new(monitor.clone(), window, cx));
         let services = cx.new(|cx| ServicesPage::new(window, cx));
+        let ports = cx.new(|cx| PortsPage::new(monitor.clone(), window, cx));
         let menu_bar = AppMenuBar::new(cx);
         let subscriptions = vec![
             cx.observe(&monitor, |_, _, cx| cx.notify()),
@@ -100,7 +105,7 @@ impl Purrtop {
         let focus_handle = cx.focus_handle();
         focus_handle.focus(window, cx);
 
-        Self { focus_handle, monitor, performance, processes, system_info, startup, users, services, menu_bar, page: Page::default(), _subscriptions: subscriptions }
+        Self { focus_handle, monitor, performance, processes, system_info, startup, users, services, ports, menu_bar, page: Page::default(), _subscriptions: subscriptions }
     }
 
     /// Refreshes the menu check marks and remembers the pick for next launch.
@@ -120,6 +125,7 @@ impl Purrtop {
         self.startup.update(cx, |startup, cx| startup.set_active(page == Page::Startup, window, cx));
         self.users.update(cx, |users, cx| users.set_active(page == Page::Users, window, cx));
         self.services.update(cx, |services, cx| services.set_active(page == Page::Services, window, cx));
+        self.ports.update(cx, |ports, cx| ports.set_active(page == Page::Ports, window, cx));
         cx.notify();
     }
 
@@ -160,6 +166,7 @@ impl Purrtop {
             Page::Startup => self.startup.clone().into_any_element(),
             Page::Users => self.users.clone().into_any_element(),
             Page::Services => self.services.clone().into_any_element(),
+            Page::Ports => self.ports.clone().into_any_element(),
         }
     }
 }

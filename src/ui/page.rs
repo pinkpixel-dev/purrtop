@@ -11,10 +11,11 @@ pub enum Page {
     Startup,
     Users,
     Services,
+    Ports,
 }
 
 impl Page {
-    pub const ALL: [Page; 7] = [Page::Summary, Page::Performance, Page::Processes, Page::SystemInfo, Page::Startup, Page::Users, Page::Services];
+    pub const ALL: [Page; 8] = [Page::Summary, Page::Performance, Page::Processes, Page::SystemInfo, Page::Startup, Page::Users, Page::Services, Page::Ports];
 
     pub fn label(self) -> &'static str {
         match self {
@@ -25,6 +26,7 @@ impl Page {
             Page::Startup => "Startup apps",
             Page::Users => "Users",
             Page::Services => "Services",
+            Page::Ports => "Ports",
         }
     }
 
@@ -37,6 +39,7 @@ impl Page {
             Page::Startup => CatalogIcon::Rocket,
             Page::Users => CatalogIcon::Users,
             Page::Services => CatalogIcon::Cog,
+            Page::Ports => CatalogIcon::Plug,
         }
     }
 }
