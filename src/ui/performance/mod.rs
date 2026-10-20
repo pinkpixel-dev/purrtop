@@ -9,7 +9,7 @@ mod gpu;
 mod memory;
 mod network;
 mod thermals;
-mod parts;
+pub(super) mod parts;
 
 use gpui_kit::component::scroll::ScrollableElement as _;
 use gpui_kit::component::{ActiveTheme as _, StyledExt as _, h_flex, v_flex};

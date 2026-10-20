@@ -7,16 +7,18 @@ pub enum Page {
     Summary,
     Performance,
     Processes,
+    SystemInfo,
 }
 
 impl Page {
-    pub const ALL: [Page; 3] = [Page::Summary, Page::Performance, Page::Processes];
+    pub const ALL: [Page; 4] = [Page::Summary, Page::Performance, Page::Processes, Page::SystemInfo];
 
     pub fn label(self) -> &'static str {
         match self {
             Page::Summary => "Summary",
             Page::Performance => "Performance",
             Page::Processes => "Processes",
+            Page::SystemInfo => "System Info",
         }
     }
 
@@ -25,6 +27,7 @@ impl Page {
             Page::Summary => CatalogIcon::LayoutDashboard,
             Page::Performance => CatalogIcon::Activity,
             Page::Processes => CatalogIcon::ListTree,
+            Page::SystemInfo => CatalogIcon::Info,
         }
     }
 }

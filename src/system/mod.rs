@@ -8,6 +8,7 @@ pub mod disk_info;
 pub mod details;
 pub mod format;
 pub mod gpu;
+pub mod hardware;
 pub mod history;
 pub mod io;
 pub mod memory;
@@ -16,6 +17,7 @@ pub mod net_info;
 pub mod pressure;
 pub mod processes;
 pub mod sensors;
+pub mod software;
 pub mod thermals;
 pub mod users;
 

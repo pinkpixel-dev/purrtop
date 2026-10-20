@@ -36,6 +36,12 @@
 - Actions on other users' processes ask for your password through polkit
 - Keyboard: arrows to move, Left and Right to fold the tree, Enter for details, Delete to terminate, Shift+Delete to force terminate, Ctrl+F to filter
 
+### ℹ️ System Info
+- New System Info page with Hardware and Software tabs
+- Hardware: maker, model, board, firmware, boot mode and Secure Boot, then the processor, memory, each GPU (with the NVIDIA driver version), each disk with its mount points, and each battery's capacity, health and cycles
+- Software: distro, kernel, architecture, init system, computer name, desktop, display server, shell, locale, time zone, and installed package counts for pacman, dpkg and Flatpak
+- `Ctrl+Tab` and `Ctrl+Shift+Tab` switch tabs
+
 ### 📊 Summary
 - Pressure meters each take the color of their own level
 

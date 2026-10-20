@@ -10,7 +10,7 @@ purrtop is a colorful system monitor and task manager for Linux. It's a desktop 
 
 I wanted something closer to Windows Task Manager (or System Informer) on Linux, but prettier, with themes that actually have some color in them.
 
-> purrtop is early. Right now it has the app shell, a live Summary dashboard, a Performance page for CPU, memory, battery, thermals, disks, network and GPUs, the Processes page, and eight themes. System Info, Services, Disk Space and the rest are on the way.
+> purrtop is early. Right now it has the app shell, a live Summary dashboard, a Performance page for CPU, memory, battery, thermals, disks, network and GPUs, the Processes page, a System Info page with Hardware and Software tabs, and eight themes. Network and Diagnostics tabs, Services, Disk Space and the rest are on the way.
 
 ## What it does right now
 
@@ -35,6 +35,10 @@ I wanted something closer to Windows Task Manager (or System Informer) on Linux,
   - New processes flash green, and ones that exit stay on screen in red for a moment
   - A right-click menu to terminate, kill, suspend or resume a process or a whole tree, send signals, change the nice value or CPU affinity, take a stack sample, open the file location, and more
   - A details dialog with the process's status, limits, environment and open files
+- A System Info page:
+  - Hardware: your machine's maker and model, board, firmware, boot mode and Secure Boot, plus the processor, memory, GPUs, disks and batteries
+  - Software: distro, kernel, desktop and display server, shell, locale, time zone, and how many packages you have installed (pacman, dpkg and Flatpak)
+  - Serial numbers and RAM slot details need root, so they're not shown
 - Status bar with the current readings and a quick theme picker
 - Eight built-in themes: Neon, Rainbow, Cotton Candy, Sunset, Matcha, Midnight, Phosphor and Graphite
 - File / View / Help menu bar, with themes under View → Theme
@@ -64,6 +68,8 @@ If the window doesn't open, run `vulkaninfo --summary` to check your Vulkan setu
 | `Alt+Down` / `Alt+Up` | Next / previous page |
 
 On the Performance page, `Up` and `Down` move through the device list.
+
+On the System Info page, `Ctrl+Tab` and `Ctrl+Shift+Tab` switch tabs.
 
 On the Processes page:
 
