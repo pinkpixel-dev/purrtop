@@ -10,7 +10,7 @@ purrtop is a colorful system monitor and task manager for Linux. It's a desktop 
 
 I wanted something closer to Windows Task Manager (or System Informer) on Linux, but prettier, with themes that actually have some color in them.
 
-> purrtop is early. Right now it has the app shell, a live Summary dashboard, a Performance page for CPU, memory, battery, thermals, disks, network and GPUs, the Processes page, a System Info page with Hardware and Software tabs, and eight themes. Network and Diagnostics tabs, Services, Disk Space and the rest are on the way.
+> purrtop is early. Right now it has the app shell, a live Summary dashboard, a Performance page for CPU, memory, battery, thermals, disks, network and GPUs, the Processes page, a System Info page with Hardware, Software and Network tabs, and eight themes. A Diagnostics tab, Services, Disk Space and the rest are on the way.
 
 ## What it does right now
 
@@ -38,6 +38,8 @@ I wanted something closer to Windows Task Manager (or System Informer) on Linux,
 - A System Info page:
   - Hardware: your machine's maker and model, board, firmware, boot mode and Secure Boot, plus the processor, memory, GPUs, disks and batteries
   - Software: distro, kernel, desktop and display server, shell, locale, time zone, and how many packages you have installed (pacman, dpkg and Flatpak)
+  - Network: default gateways, DNS servers, search domains, and every interface (physical ones first, then bridges, Docker, VPN and other virtual ones) with its addresses, MAC, MTU and driver. It refreshes every 5 seconds while you're looking at it
+  - Connected Wi-Fi also shows the network name, Wi-Fi generation, band, signal and link rates. This part needs `iw` installed (`sudo pacman -S iw` on Arch) and is skipped without it
   - Serial numbers and RAM slot details need root, so they're not shown
 - Status bar with the current readings and a quick theme picker
 - Eight built-in themes: Neon, Rainbow, Cotton Candy, Sunset, Matcha, Midnight, Phosphor and Graphite

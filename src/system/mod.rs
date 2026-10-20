@@ -14,6 +14,7 @@ pub mod io;
 pub mod memory;
 pub mod monitor;
 pub mod net_info;
+pub mod network;
 pub mod pressure;
 pub mod processes;
 pub mod sensors;

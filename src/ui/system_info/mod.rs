@@ -1,19 +1,25 @@
 //! The System Info page: what the machine is and what it runs, one tab per topic.
 
 mod hardware;
+mod network;
 mod software;
 
 use gpui_kit::component::scroll::ScrollableElement as _;
 use gpui_kit::component::tab::{Tab, TabBar};
 use gpui_kit::component::{ActiveTheme as _, StyledExt as _, v_flex};
+use std::time::Duration;
+
 use gpui_kit::*;
 
 use super::performance::parts::facts;
 use crate::system::hardware::HardwareInfo;
 use crate::system::monitor::Monitor;
+use crate::system::network::NetworkInfo;
 use crate::system::software::SoftwareInfo;
 
 const CONTEXT: &str = "SystemInfo";
+/// How often the Network tab re-reads routes, DNS and Wi-Fi while it's showing.
+const NETWORK_REFRESH: Duration = Duration::from_secs(5);
 
 /// Label and value pairs. A `None` value leaves the row out.
 type Facts = Vec<(&'static str, Option<String>)>;
@@ -32,15 +38,17 @@ enum InfoTab {
     #[default]
     Hardware,
     Software,
+    Network,
 }
 
 impl InfoTab {
-    const ALL: [InfoTab; 2] = [InfoTab::Hardware, InfoTab::Software];
+    const ALL: [InfoTab; 3] = [InfoTab::Hardware, InfoTab::Software, InfoTab::Network];
 
     fn label(self) -> &'static str {
         match self {
             InfoTab::Hardware => "Hardware",
             InfoTab::Software => "Software",
+            InfoTab::Network => "Network",
         }
     }
 }
@@ -50,6 +58,10 @@ pub struct SystemInfoPage {
     tab: InfoTab,
     hardware: HardwareInfo,
     software: SoftwareInfo,
+    /// `None` until the first read after the Network tab is shown.
+    network: Option<NetworkInfo>,
+    /// The refresh loop. Dropping it stops the loop.
+    network_task: Option<Task<()>>,
     focus_handle: FocusHandle,
     active: bool,
     _subscription: Subscription,
@@ -68,6 +80,8 @@ impl SystemInfoPage {
             tab: InfoTab::default(),
             hardware: HardwareInfo::read(),
             software: SoftwareInfo::read(),
+            network: None,
+            network_task: None,
             focus_handle: cx.focus_handle(),
             active: false,
             _subscription: subscription,
@@ -81,11 +95,37 @@ impl SystemInfoPage {
             self.focus_handle.focus(window, cx);
             cx.notify();
         }
+        self.watch_network(cx);
+    }
+
+    /// Runs the network refresh loop only while the Network tab is on screen.
+    fn watch_network(&mut self, cx: &mut Context<Self>) {
+        if !(self.active && self.tab == InfoTab::Network) {
+            self.network_task = None;
+            return;
+        }
+        if self.network_task.is_some() {
+            return;
+        }
+        self.network_task = Some(cx.spawn(async move |this, cx| {
+            loop {
+                let info = cx.background_spawn(async { NetworkInfo::read() }).await;
+                let updated = this.update(cx, |this, cx| {
+                    this.network = Some(info);
+                    cx.notify();
+                });
+                if updated.is_err() {
+                    break;
+                }
+                cx.background_executor().timer(NETWORK_REFRESH).await;
+            }
+        }));
     }
 
     fn select(&mut self, ix: usize, window: &mut Window, cx: &mut Context<Self>) {
         self.tab = InfoTab::ALL[ix.min(InfoTab::ALL.len() - 1)];
         self.focus_handle.focus(window, cx);
+        self.watch_network(cx);
         cx.notify();
     }
 
@@ -94,6 +134,7 @@ impl SystemInfoPage {
         let current = tabs.iter().position(|&tab| tab == self.tab).unwrap_or(0);
         let next = if forward { (current + 1) % tabs.len() } else { (current + tabs.len() - 1) % tabs.len() };
         self.tab = tabs[next];
+        self.watch_network(cx);
         cx.notify();
     }
 
@@ -127,6 +168,7 @@ impl Render for SystemInfoPage {
                 None => vec![hardware::render_system(&self.hardware, cx)],
             },
             InfoTab::Software => software::render(&self.software, cx),
+            InfoTab::Network => network::render(self.network.as_ref(), self.monitor.read(cx).latest(), cx),
         };
 
         v_flex()
