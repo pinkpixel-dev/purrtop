@@ -138,8 +138,9 @@ fn socket_inode(link: &str) -> Option<u64> {
 /// Every listening socket's owners, read as root with `ss`. Blocks until the
 /// password prompt is answered, so call it off the UI thread.
 pub fn owners_as_admin() -> Result<HashMap<u64, Vec<u32>>, String> {
-    let command = ["/usr/bin/ss", "--tcp", "--udp", "--listening", "--numeric", "--processes", "--extended", "--no-header"];
-    control::run_pkexec(&command.map(String::from)).map(|output| parse_ss(&output))
+    let fallback = ["/usr/bin/ss", "--tcp", "--udp", "--listening", "--numeric", "--processes", "--extended", "--no-header"];
+    let command = control::helper_command(&["port-owners".into()]).unwrap_or_else(|| fallback.map(String::from).to_vec());
+    control::run_pkexec(&command).map(|output| parse_ss(&output))
 }
 
 /// Pulls `ino:` and every `pid=` out of each `ss -tulpneH` line.

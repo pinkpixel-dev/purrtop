@@ -26,8 +26,8 @@ I wanted something closer to Windows Task Manager (or System Informer) on Linux,
   - Each network interface (Wi-Fi or Ethernet): receive and send speed, totals since boot, link speed, MAC and IP addresses
   - Battery: charge and power draw over time, time left, health and cycle count
   - Thermals: every temperature sensor on one chart (CPU, NVMe drives, memory modules, Wi-Fi and network cards), with each one's limit and peak
-  - Each GPU: usage, clock, temperature, power and video memory, whichever the driver shares. NVIDIA cards show their state and PCI details only
-- GPUs are read in a way that never wakes a sleeping laptop GPU. The tradeoff is that NVIDIA cards only show whether they're awake, not usage
+  - Each GPU: usage, clock, temperature, power and video memory, whichever the driver shares. NVIDIA cards show their state and PCI details unless you turn on NVIDIA details
+- GPUs are read in a way that never wakes a sleeping laptop GPU. NVIDIA's driver doesn't share usage through sysfs, so there's an optional NVIDIA details setting that reads it through NVML instead (see Settings below)
 - A Processes page that works a lot like Windows Task Manager's Details tab:
   - Applications and Background groups with child processes folded under their parents, or one flat list
   - Sortable, resizable columns for CPU, memory, disk I/O, threads, open files, nice and the full command
@@ -75,6 +75,7 @@ I wanted something closer to Windows Task Manager (or System Informer) on Linux,
   - Right-click to open the location, copy the path, or move it to the Trash (it asks first)
   - Folders that need admin rights to read are skipped and counted, never prompted for
 - File → Run new task (`Ctrl+N`) to start any command, like Windows Task Manager's Run dialog. It keeps running after you close purrtop
+- File → Settings… (`Ctrl+,`) for the theme and NVIDIA details
 - Status bar with the current readings and a quick theme picker
 - Eight built-in themes: Neon, Rainbow, Cotton Candy, Sunset, Matcha, Midnight, Phosphor and Graphite
 - File / View / Help menu bar, with themes under View → Theme
@@ -103,6 +104,7 @@ If the window doesn't open, run `vulkaninfo --summary` to check your Vulkan setu
 |---|---|
 | `Ctrl+Q` | Quit |
 | `Ctrl+N` | Run new task |
+| `Ctrl+,` | Settings |
 | `Alt+Down` / `Alt+Up` | Next / previous page |
 
 On the Performance page, `Up` and `Down` move through the device list.
@@ -132,13 +134,17 @@ On the Processes page:
 
 ## Admin actions
 
-Ending, renicing or changing the CPU affinity of your own processes just works. For other users' processes (or a nice value below 0), purrtop runs the same command through `pkexec`, so your desktop's polkit agent asks for your password first.
+Ending, renicing or changing the CPU affinity of your own processes just works. For other users' processes (or a nice value below 0), purrtop runs the action as admin through `pkexec`, so your desktop's polkit agent asks for your password first.
+
+When purrtop is installed as a package, admin actions go through its own small helper (`/usr/lib/purrtop/purrtop-helper`) and polkit policy, and polkit remembers your password for a few minutes. Ending a couple of root processes in a row only asks once. The helper only does purrtop's five admin jobs (signals, nice, CPU affinity, stack samples and the port owner lookup) and refuses PID 0 and 1. If you're running a `cargo run` build without the helper installed, everything still works, it just asks every time.
 
 "Create process sample" uses `eu-stack` from elfutils, and it always goes through `pkexec`, since reading another process's stacks needs ptrace rights. The sample is saved to `~/.cache/purrtop/samples/` and opened in your text editor.
 
 ## Settings
 
-purrtop saves your settings to `~/.config/purrtop/settings.json` (or `$XDG_CONFIG_HOME/purrtop/settings.json`). Right now that's only the theme.
+Open File → Settings… (`Ctrl+,`) to change the theme or turn on NVIDIA details. Everything saves right away to `~/.config/purrtop/settings.json` (or `$XDG_CONFIG_HOME/purrtop/settings.json`).
+
+NVIDIA details is off by default. When it's on, purrtop reads usage, temperature, power, clocks and video memory from NVML (`libnvidia-ml.so`, which comes with the NVIDIA driver), but only while the GPU is already awake. When nothing else is using the GPU, purrtop waits 30 seconds between readings, which is longer than it takes the GPU to fall asleep. On my laptop's RTX 4090, it went back to sleep just as fast as it does without purrtop. If something else keeps it awake (like a local AI model), you get live numbers every second.
 
 ## License
 

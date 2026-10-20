@@ -11,6 +11,9 @@ pub struct Settings {
     /// The theme name. `None` means the default theme.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub theme: Option<String>,
+    /// Read awake NVIDIA GPUs through NVML. Off by default.
+    #[serde(skip_serializing_if = "std::ops::Not::not")]
+    pub nvidia: bool,
 }
 
 impl Settings {
@@ -49,7 +52,7 @@ mod tests {
 
     #[test]
     fn round_trips_and_survives_bad_files() {
-        let settings = Settings { theme: Some("Phosphor".into()) };
+        let settings = Settings { theme: Some("Phosphor".into()), nvidia: true };
         let json = serde_json::to_string(&settings).unwrap();
         assert_eq!(Settings::parse(&json), settings);
         assert_eq!(Settings::parse("not json"), Settings::default());

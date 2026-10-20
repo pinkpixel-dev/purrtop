@@ -42,7 +42,7 @@ pub fn render(gpu: &GpuReading, history: &GpuHistory, palette: &Palette, viewpor
     }
     let note = match (gpu.awake, series.is_empty(), gpu.vendor) {
         (false, _, _) => Some("Sleeping. purrtop doesn't read a sleeping GPU, so it stays asleep."),
-        (true, true, Vendor::Nvidia) => Some("NVIDIA's driver only shares usage through NVML, which purrtop leaves off."),
+        (true, true, Vendor::Nvidia) => Some("Turn on NVIDIA details in Settings (Ctrl+,) to see usage."),
         (true, true, _) => Some("This driver doesn't share any readings."),
         (true, false, _) => None,
     };

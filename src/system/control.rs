@@ -3,8 +3,11 @@
 //! Each action is tried directly first. When the kernel refuses (another
 //! user's process, or a nice below 0), the caller can retry the same action
 //! through `pkexec`, which asks for your password with the desktop's polkit agent.
+//! When purrtop is installed with its helper and polkit policy, pkexec runs
+//! the helper instead of the system tools, and polkit remembers the password
+//! for a few minutes. Without them (like a `cargo run` build) it asks every time.
 
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::Command;
 
 use super::processes::ProcessInfo;
@@ -113,6 +116,16 @@ pub fn set_affinity(pid: u32, cpus: &[usize]) -> Result<(), Denied> {
     Ok(())
 }
 
+/// purrtop's admin helper (`src/bin/purrtop-helper.rs`) and its polkit
+/// policy, both put in place by the package.
+const HELPER: &str = "/usr/lib/purrtop/purrtop-helper";
+const POLICY: &str = "/usr/share/polkit-1/actions/dev.pinkpixel.purrtop.policy";
+
+/// The helper command for `args` when the helper and its policy are installed.
+pub fn helper_command(args: &[String]) -> Option<Vec<String>> {
+    (Path::new(HELPER).is_file() && Path::new(POLICY).is_file()).then(|| std::iter::once(HELPER.to_string()).chain(args.iter().cloned()).collect())
+}
+
 /// The same actions as root, for `pkexec`.
 pub enum AdminAction {
     Signal { pids: Vec<u32>, signal: i32 },
@@ -121,6 +134,16 @@ pub enum AdminAction {
 }
 
 impl AdminAction {
+    /// The helper's arguments for this action.
+    fn helper_args(&self) -> Vec<String> {
+        match self {
+            AdminAction::Signal { pids, signal } => ["signal".to_string(), signal.to_string()].into_iter().chain(pids.iter().map(u32::to_string)).collect(),
+            AdminAction::Renice { pid, nice } => vec!["renice".into(), nice.to_string(), pid.to_string()],
+            AdminAction::Affinity { pid, cpus } => vec!["affinity".into(), cpus.iter().map(usize::to_string).collect::<Vec<_>>().join(","), pid.to_string()],
+        }
+    }
+
+    /// The system tool that does the same thing, for when the helper isn't installed.
     fn command(&self) -> Vec<String> {
         match self {
             AdminAction::Signal { pids, signal } => {
@@ -147,7 +170,7 @@ impl AdminAction {
     /// Runs the action through pkexec. Blocks until you answer the password
     /// prompt, so call it off the UI thread.
     pub fn run(&self) -> Result<(), String> {
-        run_pkexec(&self.command()).map(|_| ())
+        run_pkexec(&helper_command(&self.helper_args()).unwrap_or_else(|| self.command())).map(|_| ())
     }
 }
 
@@ -169,7 +192,8 @@ pub fn run_pkexec(command: &[String]) -> Result<String, String> {
 /// in purrtop's cache folder. Runs through pkexec, since reading another
 /// process's stacks needs ptrace rights. Blocks; call it off the UI thread.
 pub fn sample(pid: u32, name: &str) -> Result<PathBuf, String> {
-    let stacks = run_pkexec(&["/usr/bin/eu-stack".into(), "--pid".into(), pid.to_string()])?;
+    let command = helper_command(&["sample".into(), pid.to_string()]).unwrap_or_else(|| vec!["/usr/bin/eu-stack".into(), "--pid".into(), pid.to_string()]);
+    let stacks = run_pkexec(&command)?;
     let dir = cache_dir().ok_or("No cache folder (HOME isn't set)")?.join("samples");
     std::fs::create_dir_all(&dir).map_err(|err| err.to_string())?;
     let stamp = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|time| time.as_secs()).unwrap_or(0);
@@ -280,6 +304,9 @@ mod tests {
         assert_eq!(signal, ["/usr/bin/kill", "--signal", "9", "5", "6"]);
         let affinity = AdminAction::Affinity { pid: 7, cpus: vec![0, 2, 3] }.command();
         assert_eq!(affinity[4..], ["0,2,3".to_string(), "7".to_string()]);
+        assert_eq!(AdminAction::Signal { pids: vec![5, 6], signal: 9 }.helper_args(), ["signal", "9", "5", "6"]);
+        assert_eq!(AdminAction::Renice { pid: 7, nice: -5 }.helper_args(), ["renice", "-5", "7"]);
+        assert_eq!(AdminAction::Affinity { pid: 7, cpus: vec![0, 2, 3] }.helper_args(), ["affinity", "0,2,3", "7"]);
     }
 
     #[test]

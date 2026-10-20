@@ -7,6 +7,8 @@
 - Help → About dialog with the version and a link to pinkpixel.dev
 - purrtop logo in the title bar and About dialog
 - File → Run new task (`Ctrl+N`) starts a command, detached from purrtop so it keeps running after you close it. It checks the program exists first and tells you right in the dialog if it doesn't
+- File → Settings… (`Ctrl+,`) with the theme and NVIDIA details. Changes apply and save right away
+- A `.desktop` launcher and hicolor icons in every standard size, from 16 to 512 px, so purrtop shows up in your app menu once it's installed
 
 ### 📊 Summary
 - Dashboard that fills the window: LED columns for CPU, clock, temperature and GPU, a CPU history chart (utilization, kernel time, temperature), the busiest processes, a memory chart, and cards for system pressure, network, disk and GPUs
@@ -24,6 +26,7 @@
 - Battery entry: charge and power chart, state, time left, health, cycles, and full and design capacity
 - Thermals entry: every temperature sensor with a readable name, one chart for all of them, and each sensor's limit and peak, flagged when it gets within 10 °C of its limit
 - An entry for each GPU with the readings its driver shares: usage (amdgpu), clock (i915), temperature, power and video memory, plus driver, PCI slot and power state. A sleeping GPU is never read
+- Optional NVIDIA details (off by default, in Settings): usage, temperature, power, clocks and video memory through NVML. It only reads while the GPU is already awake, and backs off when nothing else is using it, so a laptop dGPU still goes back to sleep
 - The device list scrolls to keep the keyboard selection in view
 - `Up` and `Down` move through the device list, and the list drops its sparklines in narrow windows
 
@@ -35,6 +38,7 @@
 - Detail strip under the table with CPU time, peak, shared and swap memory, cgroup and the executable path
 - Right-click menu: details dialog, terminate, force terminate, end or force quit a whole tree, suspend, resume, send any common signal, nice presets, CPU affinity, a stack sample with `eu-stack`, open file location, search online, copy name, follow process, and memory as bytes or percent
 - Actions on other users' processes ask for your password through polkit
+- When purrtop is installed with its helper, polkit remembers your password for a few minutes, so a second admin action in a row doesn't ask again. The helper only accepts purrtop's own actions and refuses PID 0 and 1
 - Keyboard: arrows to move, Left and Right to fold the tree, Enter for details, Delete to terminate, Shift+Delete to force terminate, Ctrl+F to filter
 
 ### ℹ️ System Info

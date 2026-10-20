@@ -71,20 +71,25 @@ pub struct Monitor {
     pub error: Option<SharedString>,
     /// Shared with the sampling loop: read per-process details too.
     detailed: Arc<AtomicBool>,
+    /// Shared with the sampling loop: read awake NVIDIA GPUs through NVML.
+    nvidia: Arc<AtomicBool>,
 }
 
 impl Monitor {
     pub fn new(cx: &mut Context<Self>) -> Self {
         let detailed = Arc::new(AtomicBool::new(false));
+        let nvidia = Arc::new(AtomicBool::new(false));
         let flag = detailed.clone();
+        let nvidia_flag = nvidia.clone();
         cx.spawn(async move |this, cx| {
             let mut reader = cx.background_spawn(async { Reader::new() }).await;
             loop {
                 cx.background_executor().timer(SAMPLE_INTERVAL).await;
                 let detailed = flag.load(Ordering::Relaxed);
+                let nvidia = nvidia_flag.load(Ordering::Relaxed);
                 let (back, result) = cx
                     .background_spawn(async move {
-                        let result = reader.sample(detailed);
+                        let result = reader.sample(detailed, nvidia);
                         (reader, result)
                     })
                     .await;
@@ -121,6 +126,7 @@ impl Monitor {
             batteries: HashMap::new(),
             error: None,
             detailed,
+            nvidia,
         }
     }
 
@@ -128,6 +134,11 @@ impl Monitor {
     /// cost several extra files per process, so only the Processes page asks.
     pub fn set_detailed(&self, detailed: bool) {
         self.detailed.store(detailed, Ordering::Relaxed);
+    }
+
+    /// Turns the "NVIDIA details" setting on or off for the next sample.
+    pub fn set_nvidia(&self, nvidia: bool) {
+        self.nvidia.store(nvidia, Ordering::Relaxed);
     }
 
     /// `None` until the first sample lands, about a second after launch.

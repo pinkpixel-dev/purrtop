@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=purrtop
+GenericName=System Monitor
+Comment=Keep your system purring
+Exec=purrtop
+Icon=dev.pinkpixel.Purrtop
+Terminal=false
+Categories=System;Monitor;
+Keywords=task;manager;process;performance;cpu;memory;gpu;services;startup;ports;disk;
+StartupWMClass=dev.pinkpixel.Purrtop

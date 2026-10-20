@@ -21,6 +21,7 @@ pub mod memory;
 pub mod monitor;
 pub mod net_info;
 pub mod network;
+pub mod nvidia;
 pub mod ports;
 pub mod pressure;
 pub mod processes;
@@ -38,11 +39,12 @@ use std::time::{Duration, Instant};
 
 use cpu::StatTimes;
 use cpu_info::CpuInfo;
-use gpu::{GpuDevice, GpuReading};
+use gpu::{GpuDevice, GpuReading, Vendor};
 use disk_info::DiskInfo;
 use io::{Disk, DiskCounters, DiskRates, Interface, NetCounters, NetRates, rates_by_name};
 use net_info::InterfaceInfo;
 use memory::Memory;
+use nvidia::NvidiaReader;
 use pressure::Pressure;
 use processes::{ProcessInfo, ProcessScanner};
 use battery::Battery;
@@ -103,6 +105,7 @@ pub struct Reader {
     processes: ProcessScanner,
     temperature: Option<PathBuf>,
     gpus: Vec<GpuDevice>,
+    nvidia: NvidiaReader,
     thermals: Vec<ThermalSource>,
     cpu_info: Arc<CpuInfo>,
 }
@@ -123,13 +126,15 @@ impl Reader {
             processes,
             temperature: sensors::find_cpu_temperature(),
             gpus: GpuDevice::discover(&pci_ids),
+            nvidia: NvidiaReader::default(),
             thermals: ThermalSource::discover(),
             cpu_info: Arc::new(CpuInfo::read()),
         }
     }
 
     /// `detailed` also reads each process's status, I/O and open files.
-    pub fn sample(&mut self, detailed: bool) -> std::io::Result<Snapshot> {
+    /// `nvidia` fills awake NVIDIA GPUs from NVML.
+    pub fn sample(&mut self, detailed: bool, nvidia: bool) -> std::io::Result<Snapshot> {
         let stat = StatTimes::read()?;
         let now = Instant::now();
         let elapsed = now.duration_since(self.taken);
@@ -166,6 +171,20 @@ impl Reader {
         top.truncate(TOP_PROCESSES);
 
         let (batteries, plugged_in) = battery::read();
+        if !nvidia {
+            self.nvidia.reset();
+        }
+        let gpus = self
+            .gpus
+            .iter()
+            .map(|gpu| {
+                let mut reading = gpu.read();
+                if nvidia && reading.awake && reading.vendor == Vendor::Nvidia {
+                    self.nvidia.fill(&mut reading);
+                }
+                reading
+            })
+            .collect();
         Ok(Snapshot {
             cpu,
             kernel,
@@ -180,7 +199,7 @@ impl Reader {
             disk: combined_disk,
             interfaces,
             disks,
-            gpus: self.gpus.iter().map(GpuDevice::read).collect(),
+            gpus,
             thermals: self.thermals.iter().filter_map(ThermalSource::read).collect(),
             batteries,
             plugged_in,
@@ -275,12 +294,41 @@ mod tests {
     fn reads_this_machine() {
         let mut reader = Reader::new();
         std::thread::sleep(Duration::from_millis(200));
-        let snapshot = reader.sample(true).expect("/proc should be readable on Linux");
+        let snapshot = reader.sample(true, false).expect("/proc should be readable on Linux");
         assert!(!snapshot.cores.is_empty());
         assert!(snapshot.memory.total > 0);
         assert!(!snapshot.processes.is_empty());
         assert!(!snapshot.top.is_empty() && snapshot.top.len() <= TOP_PROCESSES);
         assert!((0. ..=1.).contains(&snapshot.cpu));
         assert!(snapshot.kernel <= snapshot.cpu);
+    }
+}
+
+#[cfg(test)]
+mod nvidia_live {
+    use super::*;
+
+    /// Samples like the app does with NVIDIA details on, and checks a dGPU
+    /// nothing else is using still goes back to sleep. Takes up to 2 minutes.
+    /// Run with `cargo test nvidia_live -- --ignored --nocapture`.
+    #[test]
+    #[ignore]
+    fn nvidia_details_let_an_idle_gpu_sleep() {
+        let mut reader = Reader::new();
+        let started = Instant::now();
+        let mut read_awake = false;
+        while started.elapsed() < Duration::from_secs(120) {
+            std::thread::sleep(Duration::from_secs(1));
+            let snapshot = reader.sample(false, true).unwrap();
+            let Some(gpu) = snapshot.gpus.iter().find(|gpu| gpu.vendor == gpu::Vendor::Nvidia) else {
+                panic!("no NVIDIA GPU");
+            };
+            read_awake |= gpu.awake && gpu.busy.is_some();
+            println!("{:>3}s {:9} busy={:?} vram={:?}", started.elapsed().as_secs(), gpu.power_state.as_deref().unwrap_or("?"), gpu.busy, gpu.vram_used);
+            if read_awake && !gpu.awake {
+                return;
+            }
+        }
+        panic!("the GPU didn't go back to sleep (read while awake: {read_awake})");
     }
 }

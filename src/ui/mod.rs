@@ -7,6 +7,7 @@ mod ports;
 mod processes;
 mod run_task;
 mod services;
+mod settings_dialog;
 mod sidebar;
 mod startup;
 mod status_bar;
@@ -38,7 +39,7 @@ use crate::theme::{self, Themes};
 
 const KEY_CONTEXT: &str = "Purrtop";
 
-actions!(purrtop, [Quit, About, NextPage, PreviousPage, RunTask]);
+actions!(purrtop, [Quit, About, NextPage, PreviousPage, RunTask, OpenSettings]);
 
 /// Switches to the theme at this index, in menu order.
 #[derive(Clone, PartialEq, Deserialize, Action)]
@@ -54,6 +55,7 @@ pub fn init(cx: &mut App) {
     cx.bind_keys([
         KeyBinding::new("ctrl-q", Quit, None),
         KeyBinding::new("ctrl-n", RunTask, Some(KEY_CONTEXT)),
+        KeyBinding::new("ctrl-,", OpenSettings, Some(KEY_CONTEXT)),
         KeyBinding::new("alt-down", NextPage, Some(KEY_CONTEXT)),
         KeyBinding::new("alt-up", PreviousPage, Some(KEY_CONTEXT)),
     ]);
@@ -93,6 +95,7 @@ pub struct Purrtop {
 impl Purrtop {
     pub fn new(window: &mut Window, cx: &mut Context<Self>) -> Self {
         let monitor = cx.new(Monitor::new);
+        monitor.read(cx).set_nvidia(Settings::load().nvidia);
         let performance = cx.new(|cx| PerformancePage::new(monitor.clone(), cx));
         let processes = cx.new(|cx| ProcessesPage::new(monitor.clone(), window, cx));
         let system_info = cx.new(|cx| SystemInfoPage::new(monitor.clone(), cx));
@@ -116,7 +119,8 @@ impl Purrtop {
     /// Refreshes the menu check marks and remembers the pick for next launch.
     fn theme_changed(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         self.menu_bar.update(cx, |bar, cx| bar.reload(cx));
-        let settings = Settings { theme: Some(Themes::global(cx).current_name().to_string()) };
+        let mut settings = Settings::load();
+        settings.theme = Some(Themes::global(cx).current_name().to_string());
         if let Err(err) = settings.save() {
             window.push_notification(Notification::error(format!("Couldn't save the theme: {err}")), cx);
         }
@@ -163,6 +167,10 @@ impl Purrtop {
         run_task::open(window, cx);
     }
 
+    fn open_settings(&mut self, _: &OpenSettings, window: &mut Window, cx: &mut Context<Self>) {
+        settings_dialog::open(self.monitor.clone(), window, cx);
+    }
+
     fn render_page(&self, window: &Window, cx: &mut Context<Self>) -> AnyElement {
         match self.page {
             Page::Summary => summary::render(self.monitor.read(cx), window, cx),
@@ -193,6 +201,7 @@ impl Render for Purrtop {
             .on_action(cx.listener(Self::previous_page))
             .on_action(cx.listener(Self::about))
             .on_action(cx.listener(Self::run_task))
+            .on_action(cx.listener(Self::open_settings))
             .on_action(cx.listener(Self::show_process))
             .size_full()
             .bg(cx.theme().background)

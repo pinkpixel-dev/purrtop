@@ -1,6 +1,6 @@
 //! GPUs from `/sys/class/drm`, read only from sysfs files that never wake a
-//! sleeping GPU. NVIDIA's NVML would give more detail, but holding it open
-//! keeps a laptop's dGPU out of runtime suspend.
+//! sleeping GPU. NVIDIA's driver shares almost nothing here, so the opt-in
+//! "NVIDIA details" setting fills awake NVIDIA GPUs from NVML (`nvidia.rs`).
 
 use std::path::{Path, PathBuf};
 
