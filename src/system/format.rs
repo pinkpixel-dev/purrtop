@@ -58,6 +58,18 @@ pub fn duration(duration: Duration) -> String {
     if minutes >= 60 { format!("{} h {} min", minutes / 60, minutes % 60) } else { format!("{minutes} min") }
 }
 
+/// How long ago something happened: `just now`, `12 min ago`, `3 h ago`, `2 days ago`.
+pub fn ago(elapsed: Duration) -> String {
+    let minutes = elapsed.as_secs() / 60;
+    match minutes {
+        0 => "just now".into(),
+        1..60 => format!("{minutes} min ago"),
+        60..1440 => format!("{} h ago", minutes / 60),
+        1440..2880 => "1 day ago".into(),
+        _ => format!("{} days ago", minutes / 1440),
+    }
+}
+
 /// `3d 4:05:06`, or `4:05:06` under a day.
 pub fn uptime(duration: Duration) -> String {
     let total = duration.as_secs();
@@ -93,6 +105,15 @@ mod tests {
         assert_eq!(link_speed(100), "100 Mbit/s");
         assert_eq!(milliseconds(0.42), "0.4 ms");
         assert_eq!(milliseconds(12.6), "13 ms");
+    }
+
+    #[test]
+    fn formats_time_ago() {
+        assert_eq!(ago(Duration::from_secs(30)), "just now");
+        assert_eq!(ago(Duration::from_secs(12 * 60)), "12 min ago");
+        assert_eq!(ago(Duration::from_secs(3 * 3600 + 59)), "3 h ago");
+        assert_eq!(ago(Duration::from_secs(30 * 3600)), "1 day ago");
+        assert_eq!(ago(Duration::from_secs(5 * 86_400)), "5 days ago");
     }
 
     #[test]

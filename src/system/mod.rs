@@ -6,6 +6,7 @@ pub mod cpu;
 pub mod cpu_info;
 pub mod disk_info;
 pub mod details;
+pub mod diagnostics;
 pub mod format;
 pub mod gpu;
 pub mod hardware;

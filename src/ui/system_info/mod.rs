@@ -1,17 +1,21 @@
 //! The System Info page: what the machine is and what it runs, one tab per topic.
 
+mod diagnostics;
 mod hardware;
 mod network;
 mod software;
 
+use gpui_kit::assets::IconName as CatalogIcon;
+use gpui_kit::component::button::{Button, ButtonVariants as _};
 use gpui_kit::component::scroll::ScrollableElement as _;
 use gpui_kit::component::tab::{Tab, TabBar};
-use gpui_kit::component::{ActiveTheme as _, StyledExt as _, v_flex};
+use gpui_kit::component::{ActiveTheme as _, Disableable as _, Icon, Sizable as _, StyledExt as _, v_flex};
 use std::time::Duration;
 
 use gpui_kit::*;
 
 use super::performance::parts::facts;
+use crate::system::diagnostics::Diagnostics;
 use crate::system::hardware::HardwareInfo;
 use crate::system::monitor::Monitor;
 use crate::system::network::NetworkInfo;
@@ -39,16 +43,18 @@ enum InfoTab {
     Hardware,
     Software,
     Network,
+    Diagnostics,
 }
 
 impl InfoTab {
-    const ALL: [InfoTab; 3] = [InfoTab::Hardware, InfoTab::Software, InfoTab::Network];
+    const ALL: [InfoTab; 4] = [InfoTab::Hardware, InfoTab::Software, InfoTab::Network, InfoTab::Diagnostics];
 
     fn label(self) -> &'static str {
         match self {
             InfoTab::Hardware => "Hardware",
             InfoTab::Software => "Software",
             InfoTab::Network => "Network",
+            InfoTab::Diagnostics => "Diagnostics",
         }
     }
 }
@@ -62,6 +68,9 @@ pub struct SystemInfoPage {
     network: Option<NetworkInfo>,
     /// The refresh loop. Dropping it stops the loop.
     network_task: Option<Task<()>>,
+    /// `None` until the Diagnostics tab is first shown.
+    diagnostics: Option<Diagnostics>,
+    diagnostics_loading: bool,
     focus_handle: FocusHandle,
     active: bool,
     _subscription: Subscription,
@@ -82,6 +91,8 @@ impl SystemInfoPage {
             software: SoftwareInfo::read(),
             network: None,
             network_task: None,
+            diagnostics: None,
+            diagnostics_loading: false,
             focus_handle: cx.focus_handle(),
             active: false,
             _subscription: subscription,
@@ -95,7 +106,35 @@ impl SystemInfoPage {
             self.focus_handle.focus(window, cx);
             cx.notify();
         }
+        self.tab_shown(cx);
+    }
+
+    /// Starts or stops whatever the current tab reads in the background.
+    fn tab_shown(&mut self, cx: &mut Context<Self>) {
         self.watch_network(cx);
+        if self.active && self.tab == InfoTab::Diagnostics {
+            self.read_diagnostics(cx);
+        }
+    }
+
+    /// Reads diagnostics once, off the UI thread. Called when the tab is shown
+    /// and from the Refresh button, never on a timer.
+    fn read_diagnostics(&mut self, cx: &mut Context<Self>) {
+        if self.diagnostics_loading {
+            return;
+        }
+        self.diagnostics_loading = true;
+        cx.spawn(async move |this, cx| {
+            let diagnostics = cx.background_spawn(async { Diagnostics::read() }).await;
+            this.update(cx, |this, cx| {
+                this.diagnostics = Some(diagnostics);
+                this.diagnostics_loading = false;
+                cx.notify();
+            })
+            .ok();
+        })
+        .detach();
+        cx.notify();
     }
 
     /// Runs the network refresh loop only while the Network tab is on screen.
@@ -123,9 +162,12 @@ impl SystemInfoPage {
     }
 
     fn select(&mut self, ix: usize, window: &mut Window, cx: &mut Context<Self>) {
-        self.tab = InfoTab::ALL[ix.min(InfoTab::ALL.len() - 1)];
+        let tab = InfoTab::ALL[ix.min(InfoTab::ALL.len() - 1)];
         self.focus_handle.focus(window, cx);
-        self.watch_network(cx);
+        if tab != self.tab {
+            self.tab = tab;
+            self.tab_shown(cx);
+        }
         cx.notify();
     }
 
@@ -134,7 +176,7 @@ impl SystemInfoPage {
         let current = tabs.iter().position(|&tab| tab == self.tab).unwrap_or(0);
         let next = if forward { (current + 1) % tabs.len() } else { (current + tabs.len() - 1) % tabs.len() };
         self.tab = tabs[next];
-        self.watch_network(cx);
+        self.tab_shown(cx);
         cx.notify();
     }
 
@@ -156,11 +198,24 @@ impl Focusable for SystemInfoPage {
 impl Render for SystemInfoPage {
     fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let selected = InfoTab::ALL.iter().position(|&tab| tab == self.tab).unwrap_or(0);
-        let tabs = TabBar::new("system-info-tabs")
+        let mut tabs = TabBar::new("system-info-tabs")
             .underline()
             .selected_index(selected)
             .children(InfoTab::ALL.map(|tab| Tab::new().label(tab.label())))
             .on_click(cx.listener(|this, ix: &usize, window, cx| this.select(*ix, window, cx)));
+        if self.tab == InfoTab::Diagnostics {
+            tabs = tabs.suffix(
+                Button::new("diagnostics-refresh")
+                    .ghost()
+                    .small()
+                    .icon(Icon::new(CatalogIcon::RefreshCw))
+                    .label("Refresh")
+                    .loading(self.diagnostics_loading)
+                    .disabled(self.diagnostics_loading)
+                    .tooltip("Read the journal again")
+                    .on_click(cx.listener(|this, _, _, cx| this.read_diagnostics(cx))),
+            );
+        }
 
         let sections = match self.tab {
             InfoTab::Hardware => match self.monitor.read(cx).latest() {
@@ -169,6 +224,7 @@ impl Render for SystemInfoPage {
             },
             InfoTab::Software => software::render(&self.software, cx),
             InfoTab::Network => network::render(self.network.as_ref(), self.monitor.read(cx).latest(), cx),
+            InfoTab::Diagnostics => diagnostics::render(self.diagnostics.as_ref(), cx),
         };
 
         v_flex()

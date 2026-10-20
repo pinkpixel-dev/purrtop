@@ -37,12 +37,14 @@
 - Keyboard: arrows to move, Left and Right to fold the tree, Enter for details, Delete to terminate, Shift+Delete to force terminate, Ctrl+F to filter
 
 ### ℹ️ System Info
-- New System Info page with Hardware, Software and Network tabs
+- New System Info page with Hardware, Software, Network and Diagnostics tabs
 - Hardware: maker, model, board, firmware, boot mode and Secure Boot, then the processor, memory, each GPU (with the NVIDIA driver version), each disk with its mount points, and each battery's capacity, health and cycles
 - Software: distro, kernel, architecture, init system, computer name, desktop, display server, shell, locale, time zone, and installed package counts for pacman, dpkg and Flatpak
 - Network: default IPv4 and IPv6 gateways, the real DNS servers (systemd-resolved's upstream ones, not its `127.0.0.53` stub), search domains and the network services running, then every interface with its kind, state, MAC, MTU, driver and addresses. Bridges, Docker, veth and VPN interfaces are listed after the physical ones
 - Connected Wi-Fi shows the network name, Wi-Fi generation, band, signal and receive and send rates, read with `iw`
 - The Network tab refreshes every 5 seconds while it's showing
+- Diagnostics: failed system and user units, error messages since boot grouped by source and message with a count and when each last happened (newest first), crashes from the last 7 days with the signal and PID, and out-of-memory kills from the kernel or systemd-oomd
+- Diagnostics reads the journal when you open the tab, and again when you click Refresh
 - `Ctrl+Tab` and `Ctrl+Shift+Tab` switch tabs
 
 ### 📊 Summary
