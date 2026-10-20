@@ -20,6 +20,10 @@
 - Memory view: use and swap over time, a bar split into in use, cached and free, and commit charge
 - Every disk gets its own entry: active time, read and write charts, response time, model and type, and each mounted volume with its free space
 - Every physical network interface gets its own entry: receive and send chart, totals since boot, state, link speed, MAC, IPv4 and IPv6
+- Battery entry: charge and power chart, state, time left, health, cycles, and full and design capacity
+- Thermals entry: every temperature sensor with a readable name, one chart for all of them, and each sensor's limit and peak, flagged when it gets within 10 °C of its limit
+- An entry for each GPU with the readings its driver shares: usage (amdgpu), clock (i915), temperature, power and video memory, plus driver, PCI slot and power state. A sleeping GPU is never read
+- The device list scrolls to keep the keyboard selection in view
 - `Up` and `Down` move through the device list, and the list drops its sparklines in narrow windows
 
 ### 🐾 Processes

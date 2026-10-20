@@ -1,5 +1,6 @@
 //! Everything purrtop reads about the machine, straight from `/proc` and `/sys`.
 
+pub mod battery;
 pub mod control;
 pub mod cpu;
 pub mod cpu_info;
@@ -15,6 +16,7 @@ pub mod net_info;
 pub mod pressure;
 pub mod processes;
 pub mod sensors;
+pub mod thermals;
 pub mod users;
 
 use std::collections::HashMap;
@@ -31,7 +33,9 @@ use net_info::InterfaceInfo;
 use memory::Memory;
 use pressure::Pressure;
 use processes::{ProcessInfo, ProcessScanner};
+use battery::Battery;
 use sensors::Clock;
+use thermals::{Temperature, ThermalSource};
 
 /// How many processes the busiest-first list keeps.
 pub const TOP_PROCESSES: usize = 64;
@@ -62,6 +66,10 @@ pub struct Snapshot {
     /// Sorted by kernel name, so `Disk 0` stays the same disk.
     pub disks: Vec<Disk>,
     pub gpus: Vec<GpuReading>,
+    /// Every temperature sensor that isn't a GPU's, CPU first.
+    pub thermals: Vec<Temperature>,
+    pub batteries: Vec<Battery>,
+    pub plugged_in: bool,
     /// Every process. Shared, since pages hold on to it between readings.
     pub processes: Arc<Vec<ProcessInfo>>,
     /// Indices into `processes`, busiest first, at most [`TOP_PROCESSES`].
@@ -83,6 +91,7 @@ pub struct Reader {
     processes: ProcessScanner,
     temperature: Option<PathBuf>,
     gpus: Vec<GpuDevice>,
+    thermals: Vec<ThermalSource>,
     cpu_info: Arc<CpuInfo>,
 }
 
@@ -102,6 +111,7 @@ impl Reader {
             processes,
             temperature: sensors::find_cpu_temperature(),
             gpus: GpuDevice::discover(&pci_ids),
+            thermals: ThermalSource::discover(),
             cpu_info: Arc::new(CpuInfo::read()),
         }
     }
@@ -143,6 +153,7 @@ impl Reader {
         top.sort_by(|&a, &b| processes[b].cpu.total_cmp(&processes[a].cpu).then(processes[b].memory.cmp(&processes[a].memory)));
         top.truncate(TOP_PROCESSES);
 
+        let (batteries, plugged_in) = battery::read();
         Ok(Snapshot {
             cpu,
             kernel,
@@ -158,6 +169,9 @@ impl Reader {
             interfaces,
             disks,
             gpus: self.gpus.iter().map(GpuDevice::read).collect(),
+            thermals: self.thermals.iter().filter_map(ThermalSource::read).collect(),
+            batteries,
+            plugged_in,
             processes: Arc::new(processes),
             top,
             uptime: read_uptime().unwrap_or_default(),

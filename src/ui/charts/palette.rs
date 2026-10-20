@@ -17,6 +17,10 @@ pub struct Palette {
     pub sent: Hsla,
     pub read: Hsla,
     pub written: Hsla,
+    pub battery: Hsla,
+    pub power: Hsla,
+    /// Colors handed out in turn when a chart has many lines (thermal sensors).
+    pub cycle: [Hsla; 6],
     pub grid: Hsla,
 }
 
@@ -36,7 +40,17 @@ impl Palette {
             sent: theme.red,
             read: theme.blue,
             written: theme.yellow,
+            battery: theme.success,
+            power: theme.red,
+            cycle: [theme.yellow, theme.red, theme.cyan, theme.magenta, theme.blue, theme.green],
             grid: theme.chart_grid,
         }
+    }
+
+    /// The `ix`th color from [`Self::cycle`], fainter on the second time round
+    /// so repeats can still be told apart.
+    pub fn cycled(&self, ix: usize) -> Hsla {
+        let color = self.cycle[ix % self.cycle.len()];
+        if ix < self.cycle.len() { color } else { color.opacity(0.55) }
     }
 }

@@ -29,6 +29,22 @@ pub struct NetHistory {
     pub sent: History,
 }
 
+/// One GPU's busy share, clock in MHz and temperature in °C. Readings the
+/// driver doesn't give stay at zero.
+#[derive(Default)]
+pub struct GpuHistory {
+    pub busy: History,
+    pub clock: History,
+    pub temperature: History,
+}
+
+/// One battery's charge (0 to 1) and power in watts.
+#[derive(Default)]
+pub struct BatteryHistory {
+    pub charge: History,
+    pub watts: History,
+}
+
 pub struct Monitor {
     latest: Option<Snapshot>,
     /// Each history holds raw readings: fractions, °C or bytes per second.
@@ -47,6 +63,10 @@ pub struct Monitor {
     /// Per disk and per interface, by kernel name.
     pub disks: HashMap<String, DiskHistory>,
     pub interfaces: HashMap<String, NetHistory>,
+    /// Per GPU by PCI slot, per sensor by key, per battery by name.
+    pub gpus: HashMap<String, GpuHistory>,
+    pub thermals: HashMap<String, History>,
+    pub batteries: HashMap<String, BatteryHistory>,
     /// Set when the last sample failed, cleared by the next good one.
     pub error: Option<SharedString>,
     /// Shared with the sampling loop: read per-process details too.
@@ -96,6 +116,9 @@ impl Monitor {
             disk_written: History::default(),
             disks: HashMap::new(),
             interfaces: HashMap::new(),
+            gpus: HashMap::new(),
+            thermals: HashMap::new(),
+            batteries: HashMap::new(),
             error: None,
             detailed,
         }
@@ -140,6 +163,23 @@ impl Monitor {
                     let history = self.interfaces.entry(interface.name.clone()).or_default();
                     history.received.push(interface.rates.received as f32);
                     history.sent.push(interface.rates.sent as f32);
+                }
+                for gpu in &snapshot.gpus {
+                    let history = self.gpus.entry(gpu.slot.clone()).or_default();
+                    // A sleeping GPU is idle, so its lines drop to zero instead of freezing.
+                    history.busy.push(gpu.busy.unwrap_or(0.));
+                    history.clock.push(gpu.clock_mhz.unwrap_or(0.));
+                    history.temperature.push(gpu.temperature.unwrap_or(0.));
+                }
+                self.thermals.retain(|key, _| snapshot.thermals.iter().any(|reading| reading.key == *key));
+                for reading in &snapshot.thermals {
+                    self.thermals.entry(reading.key.clone()).or_default().push(reading.celsius);
+                }
+                self.batteries.retain(|name, _| snapshot.batteries.iter().any(|battery| battery.name == *name));
+                for battery in &snapshot.batteries {
+                    let history = self.batteries.entry(battery.name.clone()).or_default();
+                    history.charge.push(battery.charge);
+                    history.watts.push(battery.watts.unwrap_or(0.));
                 }
                 self.latest = Some(snapshot);
                 self.error = None;

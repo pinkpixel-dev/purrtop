@@ -1,11 +1,14 @@
 //! The Performance page: a list of devices with sparklines on the left, and
 //! charts and stats for the selected one on the right.
 
+mod battery;
 mod cpu;
 mod devices;
 mod disk;
+mod gpu;
 mod memory;
 mod network;
+mod thermals;
 mod parts;
 
 use gpui_kit::component::scroll::ScrollableElement as _;
@@ -33,6 +36,8 @@ pub struct PerformancePage {
     monitor: Entity<Monitor>,
     device: Device,
     focus_handle: FocusHandle,
+    /// The device list's scroll, so the keyboard selection stays in view.
+    list_scroll: ScrollHandle,
     active: bool,
     _subscription: Subscription,
 }
@@ -44,7 +49,14 @@ impl PerformancePage {
                 cx.notify();
             }
         });
-        Self { monitor, device: Device::default(), focus_handle: cx.focus_handle(), active: false, _subscription: subscription }
+        Self {
+            monitor,
+            device: Device::default(),
+            focus_handle: cx.focus_handle(),
+            list_scroll: ScrollHandle::new(),
+            active: false,
+            _subscription: subscription,
+        }
     }
 
     /// Called when the page is shown or hidden. Showing it hands it the
@@ -71,6 +83,7 @@ impl PerformancePage {
         let current = all.iter().position(|device| *device == self.device).unwrap_or(0);
         let next = if forward { (current + 1).min(all.len() - 1) } else { current.saturating_sub(1) };
         self.device = all[next].clone();
+        self.list_scroll.scroll_to_item(next);
         cx.notify();
     }
 
@@ -124,13 +137,16 @@ impl Render for PerformancePage {
         if !all.contains(&self.device) {
             self.device = Device::Cpu;
         }
-        let list = devices::render(&all, &self.device, focused, compact, monitor, snapshot, &palette, cx, |device| {
+        let list = devices::render(&all, &self.device, focused, compact, monitor, snapshot, &palette, &self.list_scroll, cx, |device| {
             Box::new(cx.listener(move |this, _, window, cx| this.select(device.clone(), window, cx)))
         });
         let disk = |name: &String| Some((snapshot.disks.iter().find(|disk| disk.name == *name)?, monitor.disks.get(name)?));
         let interface = |name: &String| {
             Some((snapshot.interfaces.iter().find(|interface| interface.name == *name)?, monitor.interfaces.get(name)?))
         };
+        let battery =
+            |name: &String| Some((snapshot.batteries.iter().find(|battery| battery.name == *name)?, monitor.batteries.get(name)?));
+        let gpu = |slot: &String| Some((snapshot.gpus.iter().find(|gpu| gpu.slot == *slot)?, monitor.gpus.get(slot)?));
         let detail = match &self.device {
             Device::Memory => memory::render(monitor, snapshot, &palette, viewport, cx),
             Device::Disk(name) if let Some((disk, history)) = disk(name) => {
@@ -139,6 +155,11 @@ impl Render for PerformancePage {
             Device::Network(name) if let Some((interface, history)) = interface(name) => {
                 network::render(interface, history, snapshot, &palette, viewport, cx)
             }
+            Device::Battery(name) if let Some((battery, history)) = battery(name) => {
+                battery::render(battery, history, snapshot, &palette, viewport, cx)
+            }
+            Device::Gpu(slot) if let Some((gpu, history)) = gpu(slot) => gpu::render(gpu, history, &palette, viewport, cx),
+            Device::Thermals => thermals::render(monitor, snapshot, &palette, viewport, cx),
             _ => cpu::render(monitor, snapshot, &palette, viewport, compact, cx),
         };
 

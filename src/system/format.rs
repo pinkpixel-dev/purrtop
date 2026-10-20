@@ -52,6 +52,12 @@ pub fn milliseconds(ms: f32) -> String {
     if ms < 10. { format!("{ms:.1} ms") } else { format!("{ms:.0} ms") }
 }
 
+/// Rough time left: `2 h 15 min`, or `45 min` under an hour.
+pub fn duration(duration: Duration) -> String {
+    let minutes = duration.as_secs() / 60;
+    if minutes >= 60 { format!("{} h {} min", minutes / 60, minutes % 60) } else { format!("{minutes} min") }
+}
+
 /// `3d 4:05:06`, or `4:05:06` under a day.
 pub fn uptime(duration: Duration) -> String {
     let total = duration.as_secs();
@@ -93,6 +99,8 @@ mod tests {
     fn formats_percent_and_uptime() {
         assert_eq!(percent(0.143), "14.3%");
         assert_eq!(uptime(Duration::from_secs(16 * 60 + 56)), "0:16:56");
+        assert_eq!(duration(Duration::from_secs(9000)), "2 h 30 min");
+        assert_eq!(duration(Duration::from_secs(45 * 60 + 30)), "45 min");
         assert_eq!(uptime(Duration::from_secs(3 * 86_400 + 4 * 3600 + 5 * 60 + 6)), "3d 4:05:06");
     }
 }

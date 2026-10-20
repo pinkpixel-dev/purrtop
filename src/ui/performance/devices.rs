@@ -6,6 +6,8 @@ use gpui_kit::prelude::FluentBuilder as _;
 use gpui_kit::*;
 
 use super::parts::{NETWORK_FLOOR, shared_scale};
+use crate::system::battery::{Battery, BatteryState};
+use crate::system::gpu::GpuReading;
 use crate::system::io::{Disk, Interface};
 use crate::system::monitor::Monitor;
 use crate::system::{Snapshot, format};
@@ -16,26 +18,37 @@ const COMPACT_WIDTH: f32 = 184.;
 const ROW_HEIGHT: f32 = 60.;
 const SPARKLINE_WIDTH: f32 = 84.;
 const SPARKLINE_HEIGHT: f32 = 44.;
+/// The top of every temperature chart, in °C.
+pub const THERMAL_SCALE: f32 = 110.;
 
 pub type OnSelect = Box<dyn Fn(&ClickEvent, &mut Window, &mut App)>;
 
-/// Disks and interfaces are kept by kernel name, so the selection survives
-/// devices coming and going.
+/// Disks, interfaces and batteries are kept by kernel name and GPUs by PCI
+/// slot, so the selection survives devices coming and going.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub enum Device {
     #[default]
     Cpu,
     Memory,
+    Battery(String),
+    Thermals,
     Disk(String),
     Network(String),
+    Gpu(String),
 }
 
 impl Device {
-    /// Every device in list order: CPU, memory, disks, then interfaces.
+    /// Every device in list order: CPU, memory, batteries, thermals, disks,
+    /// interfaces, then GPUs.
     pub fn list(snapshot: &Snapshot) -> Vec<Device> {
         let mut devices = vec![Device::Cpu, Device::Memory];
+        devices.extend(snapshot.batteries.iter().map(|battery| Device::Battery(battery.name.clone())));
+        if !snapshot.thermals.is_empty() {
+            devices.push(Device::Thermals);
+        }
         devices.extend(snapshot.disks.iter().map(|disk| Device::Disk(disk.name.clone())));
         devices.extend(snapshot.interfaces.iter().map(|interface| Device::Network(interface.name.clone())));
+        devices.extend(snapshot.gpus.iter().map(|gpu| Device::Gpu(gpu.slot.clone())));
         devices
     }
 
@@ -43,8 +56,11 @@ impl Device {
         match self {
             Device::Cpu => "cpu".into(),
             Device::Memory => "memory".into(),
+            Device::Battery(name) => format!("battery-{name}"),
+            Device::Thermals => "thermals".into(),
             Device::Disk(name) => format!("disk-{name}"),
             Device::Network(name) => format!("net-{name}"),
+            Device::Gpu(slot) => format!("gpu-{slot}"),
         }
     }
 }
@@ -62,6 +78,25 @@ pub fn interface_label(interface: &Interface, snapshot: &Snapshot) -> String {
     match same_kind.iter().position(|other| other.name == interface.name) {
         Some(ix) if ix > 0 => format!("{kind} {}", ix + 1),
         _ => kind.into(),
+    }
+}
+
+/// `Battery`, numbered from the second one.
+pub fn battery_label(battery: &Battery, snapshot: &Snapshot) -> String {
+    match snapshot.batteries.iter().position(|other| other.name == battery.name) {
+        Some(ix) if ix > 0 => format!("Battery {}", ix + 1),
+        _ => "Battery".into(),
+    }
+}
+
+/// The GPU's headline: usage when the driver gives it, otherwise its clock,
+/// otherwise just whether it's awake.
+pub fn gpu_headline(gpu: &GpuReading) -> String {
+    match (gpu.busy, gpu.clock_mhz, gpu.awake) {
+        (Some(busy), _, _) => format::percent(busy),
+        (None, Some(mhz), _) => format::frequency(mhz),
+        (None, None, true) => "Awake".into(),
+        (None, None, false) => "Sleeping".into(),
     }
 }
 
@@ -128,6 +163,55 @@ fn reading(device: &Device, monitor: &Monitor, snapshot: &Snapshot, palette: &Pa
                 ],
             }
         }
+        Device::Battery(name) => {
+            let battery = snapshot.batteries.iter().find(|battery| battery.name == *name)?;
+            let history = monitor.batteries.get(name)?;
+            let mut detail = battery.state.label().to_string();
+            if let Some(left) = battery.time_left {
+                detail.push_str(&format!(" · {} left", format::duration(left)));
+            }
+            Reading {
+                label: battery_label(battery, snapshot),
+                icon: if battery.state == BatteryState::Charging { CatalogIcon::BatteryCharging } else { CatalogIcon::Battery },
+                value: format::percent(battery.charge),
+                detail,
+                color: palette.battery,
+                series: vec![Series::new(&history.charge, 1., palette.battery).area()],
+            }
+        }
+        Device::Thermals => {
+            let hottest = snapshot.thermals.iter().max_by(|a, b| a.celsius.total_cmp(&b.celsius))?;
+            let history = monitor.thermals.get(&hottest.key)?;
+            Reading {
+                label: "Thermals".into(),
+                icon: CatalogIcon::Thermometer,
+                value: format::celsius(hottest.celsius),
+                detail: format!("Hottest: {}", hottest.label),
+                color: palette.temperature,
+                series: vec![Series::new(history, THERMAL_SCALE, palette.temperature).area()],
+            }
+        }
+        Device::Gpu(slot) => {
+            let gpu = snapshot.gpus.iter().find(|gpu| gpu.slot == *slot)?;
+            let history = monitor.gpus.get(slot)?;
+            let series = match (gpu.busy.is_some(), gpu.max_clock_mhz) {
+                (true, _) => vec![Series::new(&history.busy, 1., palette.gpu).area()],
+                (false, Some(max)) => vec![Series::new(&history.clock, max, palette.gpu).area()],
+                (false, None) => Vec::new(),
+            };
+            let mut detail = gpu.vendor.label().to_string();
+            if let Some(driver) = &gpu.driver {
+                detail.push_str(&format!(" · {driver}"));
+            }
+            Reading {
+                label: gpu.name.clone(),
+                icon: CatalogIcon::Gpu,
+                value: gpu_headline(gpu),
+                detail,
+                color: palette.gpu,
+                series,
+            }
+        }
     })
 }
 
@@ -145,6 +229,7 @@ pub fn render(
     monitor: &Monitor,
     snapshot: &Snapshot,
     palette: &Palette,
+    scroll: &ScrollHandle,
     cx: &App,
     on_select: impl Fn(Device) -> OnSelect,
 ) -> impl IntoElement {
@@ -159,6 +244,7 @@ pub fn render(
         .h_full()
         .gap_1()
         .overflow_y_scroll()
+        .track_scroll(scroll)
         .children(rows)
 }
 

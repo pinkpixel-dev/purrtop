@@ -11,6 +11,12 @@ use super::sensors::{read_celsius, read_u64};
 pub struct GpuDevice {
     pub name: String,
     pub vendor: Vendor,
+    /// The kernel driver, like `i915`, `amdgpu` or `nvidia`.
+    pub driver: Option<String>,
+    /// The PCI address, like `0000:01:00.0`. Unique, so histories key on it.
+    pub slot: String,
+    /// The card folder, `/sys/class/drm/cardN`.
+    card: PathBuf,
     /// The PCI device folder, `/sys/class/drm/cardN/device`.
     path: PathBuf,
     hwmon: Option<PathBuf>,
@@ -33,6 +39,15 @@ impl Vendor {
             _ => Vendor::Other,
         }
     }
+
+    pub fn label(self) -> &'static str {
+        match self {
+            Vendor::Amd => "AMD",
+            Vendor::Intel => "Intel",
+            Vendor::Nvidia => "NVIDIA",
+            Vendor::Other => "Other",
+        }
+    }
 }
 
 /// One reading of a GPU. Fields the driver doesn't expose stay `None`.
@@ -40,12 +55,22 @@ impl Vendor {
 pub struct GpuReading {
     pub name: String,
     pub vendor: Vendor,
+    pub driver: Option<String>,
+    pub slot: String,
     /// False while the GPU is runtime-suspended.
     pub awake: bool,
+    /// The kernel's runtime PM status (`active`, `suspended`, `unsupported`).
+    pub power_state: Option<String>,
     /// From 0 to 1.
     pub busy: Option<f32>,
     pub temperature: Option<f32>,
     pub watts: Option<f32>,
+    /// Current and top clock. Read from i915's `gt_*_freq_mhz`.
+    pub clock_mhz: Option<f32>,
+    pub max_clock_mhz: Option<f32>,
+    /// Video memory in bytes. Read from amdgpu's `mem_info_vram_*`.
+    pub vram_used: Option<u64>,
+    pub vram_total: Option<u64>,
 }
 
 impl GpuDevice {
@@ -79,7 +104,13 @@ impl GpuDevice {
                     .ok()
                     .and_then(|mut entries| entries.find_map(Result::ok))
                     .map(|entry| entry.path());
-                Some(Self { name, vendor, path, hwmon })
+                let link_name = |link: &Path| std::fs::read_link(link).ok()?.file_name()?.to_str().map(str::to_string);
+                let driver = link_name(&path.join("driver"));
+                let slot = std::fs::canonicalize(&path)
+                    .ok()
+                    .and_then(|real| real.file_name()?.to_str().map(str::to_string))
+                    .unwrap_or_else(|| card.display().to_string());
+                Some(Self { name, vendor, driver, slot, card, path, hwmon })
             })
             .collect()
     }
@@ -87,12 +118,22 @@ impl GpuDevice {
     pub fn read(&self) -> GpuReading {
         // Devices without runtime PM report nothing or "unsupported"; treat those as awake.
         let status = std::fs::read_to_string(self.path.join("power/runtime_status")).unwrap_or_default();
-        let awake = status.trim() != "suspended";
+        let status = status.trim();
+        let awake = status != "suspended";
         let hwmon = self.hwmon.as_deref().filter(|_| awake);
+        let card_mhz = |file: &str| awake.then(|| read_u64(&self.card.join(file))).flatten().map(|mhz| mhz as f32);
+        let device_bytes = |file: &str| awake.then(|| read_u64(&self.path.join(file))).flatten();
         GpuReading {
             name: self.name.clone(),
             vendor: self.vendor,
+            driver: self.driver.clone(),
+            slot: self.slot.clone(),
             awake,
+            power_state: (!status.is_empty()).then(|| status.to_string()),
+            clock_mhz: card_mhz("gt_act_freq_mhz"),
+            max_clock_mhz: card_mhz("gt_RP0_freq_mhz"),
+            vram_used: device_bytes("mem_info_vram_used"),
+            vram_total: device_bytes("mem_info_vram_total"),
             busy: awake
                 .then(|| read_u64(&self.path.join("gpu_busy_percent")))
                 .flatten()
