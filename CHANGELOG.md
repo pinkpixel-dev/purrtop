@@ -58,6 +58,15 @@
 - Right-click menu: turn on or off, start now, stop now, open file location, copy command
 - Keyboard: arrows, Home and End to move, Space to turn the selected entry on or off, F5 to refresh
 
+### 👥 Users
+- New Users page with everyone signed in, then a folded "System accounts" group for root, `systemd-*` and the other service accounts that have something running
+- Each account shows its CPU, memory and process count, added up from the same once-a-second reading as the Processes page. Signed-in people also show their status (Active, Idle or Locked) and session, like "Wayland · COSMIC · tty1"
+- Open a user (the arrow, double-click or `Right`) to see its processes, busiest first
+- Sessions come from systemd-logind through `loginctl` and refresh every 5 seconds while the page is showing
+- Right-click a signed-in user to lock their sessions or sign them out. Sign out asks first, and logind checks with polkit for anyone else's session
+- Detail strip with the UID, how long they've been signed in, the busiest process and every session, or a selected process's command line
+- Keyboard: arrows, Home and End to move, `Right` and `Left` to open and close a user
+
 ### 📊 Summary
 - Pressure meters each take the color of their own level
 

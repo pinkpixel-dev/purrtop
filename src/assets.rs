@@ -4,7 +4,7 @@ use gpui_kit::assets::{Assets as ComponentAssets, icon_assets};
 use gpui_kit::{AssetSource, Result, SharedString};
 
 // Lucide icons purrtop uses beyond Kit's default set.
-icon_assets!(ExtraIcons, [ListTree, Activity, Cpu, MemoryStick, HardDrive, Usb, Wifi, EthernetPort, Gpu, Thermometer, Battery, BatteryCharging, Rocket]);
+icon_assets!(ExtraIcons, [ListTree, Activity, Cpu, MemoryStick, HardDrive, Usb, Wifi, EthernetPort, Gpu, Thermometer, Battery, BatteryCharging, Rocket, Users]);
 
 /// The purrtop logo, shown in the title bar and the About dialog.
 pub const LOGO: &str = "images/logo.png";

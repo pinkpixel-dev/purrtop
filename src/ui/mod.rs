@@ -10,6 +10,7 @@ mod status_bar;
 mod summary;
 mod system_info;
 mod title_bar;
+mod users;
 
 use gpui_kit::component::menu::AppMenuBar;
 use gpui_kit::component::notification::Notification;
@@ -23,6 +24,7 @@ use self::performance::PerformancePage;
 use self::processes::ProcessesPage;
 use self::startup::StartupPage;
 use self::system_info::SystemInfoPage;
+use self::users::UsersPage;
 
 use crate::settings::Settings;
 use crate::system::monitor::Monitor;
@@ -48,6 +50,7 @@ pub fn init(cx: &mut App) {
     processes::init(cx);
     system_info::init(cx);
     startup::init(cx);
+    users::init(cx);
     cx.on_action(|_: &Quit, cx| cx.quit());
     // App-wide so the menu bar and the status bar picker both reach it.
     cx.on_action(|action: &SwitchTheme, cx| {
@@ -64,6 +67,7 @@ pub struct Purrtop {
     processes: Entity<ProcessesPage>,
     system_info: Entity<SystemInfoPage>,
     startup: Entity<StartupPage>,
+    users: Entity<UsersPage>,
     menu_bar: Entity<AppMenuBar>,
     page: Page,
     _subscriptions: Vec<Subscription>,
@@ -76,6 +80,7 @@ impl Purrtop {
         let processes = cx.new(|cx| ProcessesPage::new(monitor.clone(), window, cx));
         let system_info = cx.new(|cx| SystemInfoPage::new(monitor.clone(), cx));
         let startup = cx.new(|cx| StartupPage::new(window, cx));
+        let users = cx.new(|cx| UsersPage::new(monitor.clone(), window, cx));
         let menu_bar = AppMenuBar::new(cx);
         let subscriptions = vec![
             cx.observe(&monitor, |_, _, cx| cx.notify()),
@@ -85,7 +90,7 @@ impl Purrtop {
         let focus_handle = cx.focus_handle();
         focus_handle.focus(window, cx);
 
-        Self { focus_handle, monitor, performance, processes, system_info, startup, menu_bar, page: Page::default(), _subscriptions: subscriptions }
+        Self { focus_handle, monitor, performance, processes, system_info, startup, users, menu_bar, page: Page::default(), _subscriptions: subscriptions }
     }
 
     /// Refreshes the menu check marks and remembers the pick for next launch.
@@ -103,6 +108,7 @@ impl Purrtop {
         self.processes.update(cx, |processes, cx| processes.set_active(page == Page::Processes, cx));
         self.system_info.update(cx, |system_info, cx| system_info.set_active(page == Page::SystemInfo, window, cx));
         self.startup.update(cx, |startup, cx| startup.set_active(page == Page::Startup, window, cx));
+        self.users.update(cx, |users, cx| users.set_active(page == Page::Users, window, cx));
         cx.notify();
     }
 
@@ -136,6 +142,7 @@ impl Purrtop {
             Page::Processes => self.processes.clone().into_any_element(),
             Page::SystemInfo => self.system_info.clone().into_any_element(),
             Page::Startup => self.startup.clone().into_any_element(),
+            Page::Users => self.users.clone().into_any_element(),
         }
     }
 }

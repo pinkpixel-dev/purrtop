@@ -3,7 +3,7 @@
 
 mod actions;
 mod affinity;
-mod confirm;
+pub(crate) mod confirm;
 mod detail_strip;
 mod details;
 mod lifecycle;
