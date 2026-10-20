@@ -1,6 +1,7 @@
 mod about;
 mod charts;
 mod page;
+mod processes;
 mod sidebar;
 mod status_bar;
 mod summary;
@@ -13,6 +14,8 @@ use gpui_kit::*;
 use serde::Deserialize;
 
 pub use page::Page;
+
+use self::processes::ProcessesPage;
 
 use crate::settings::Settings;
 use crate::system::monitor::Monitor;
@@ -33,6 +36,7 @@ pub fn init(cx: &mut App) {
         KeyBinding::new("alt-down", NextPage, Some(KEY_CONTEXT)),
         KeyBinding::new("alt-up", PreviousPage, Some(KEY_CONTEXT)),
     ]);
+    processes::init(cx);
     cx.on_action(|_: &Quit, cx| cx.quit());
     // App-wide so the menu bar and the status bar picker both reach it.
     cx.on_action(|action: &SwitchTheme, cx| {
@@ -45,6 +49,7 @@ pub fn init(cx: &mut App) {
 pub struct Purrtop {
     focus_handle: FocusHandle,
     monitor: Entity<Monitor>,
+    processes: Entity<ProcessesPage>,
     menu_bar: Entity<AppMenuBar>,
     page: Page,
     _subscriptions: Vec<Subscription>,
@@ -53,6 +58,7 @@ pub struct Purrtop {
 impl Purrtop {
     pub fn new(window: &mut Window, cx: &mut Context<Self>) -> Self {
         let monitor = cx.new(Monitor::new);
+        let processes = cx.new(|cx| ProcessesPage::new(monitor.clone(), window, cx));
         let menu_bar = AppMenuBar::new(cx);
         let subscriptions = vec![
             cx.observe(&monitor, |_, _, cx| cx.notify()),
@@ -62,7 +68,7 @@ impl Purrtop {
         let focus_handle = cx.focus_handle();
         focus_handle.focus(window, cx);
 
-        Self { focus_handle, monitor, menu_bar, page: Page::default(), _subscriptions: subscriptions }
+        Self { focus_handle, monitor, processes, menu_bar, page: Page::default(), _subscriptions: subscriptions }
     }
 
     /// Refreshes the menu check marks and remembers the pick for next launch.
@@ -76,6 +82,7 @@ impl Purrtop {
 
     fn set_page(&mut self, page: Page, cx: &mut Context<Self>) {
         self.page = page;
+        self.processes.update(cx, |processes, cx| processes.set_active(page == Page::Processes, cx));
         cx.notify();
     }
 
@@ -101,6 +108,7 @@ impl Purrtop {
     fn render_page(&self, window: &Window, cx: &mut Context<Self>) -> AnyElement {
         match self.page {
             Page::Summary => summary::render(self.monitor.read(cx), window, cx),
+            Page::Processes => self.processes.clone().into_any_element(),
         }
     }
 }

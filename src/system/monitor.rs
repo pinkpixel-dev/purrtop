@@ -1,6 +1,8 @@
 //! The live feed every page reads from: a snapshot each second, off the UI
 //! thread, plus short histories for charts.
 
+use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
 
 use gpui_kit::*;
@@ -24,17 +26,22 @@ pub struct Monitor {
     pub disk_written: History,
     /// Set when the last sample failed, cleared by the next good one.
     pub error: Option<SharedString>,
+    /// Shared with the sampling loop: read per-process details too.
+    detailed: Arc<AtomicBool>,
 }
 
 impl Monitor {
     pub fn new(cx: &mut Context<Self>) -> Self {
+        let detailed = Arc::new(AtomicBool::new(false));
+        let flag = detailed.clone();
         cx.spawn(async move |this, cx| {
             let mut reader = cx.background_spawn(async { Reader::new() }).await;
             loop {
                 cx.background_executor().timer(SAMPLE_INTERVAL).await;
+                let detailed = flag.load(Ordering::Relaxed);
                 let (back, result) = cx
                     .background_spawn(async move {
-                        let result = reader.sample();
+                        let result = reader.sample(detailed);
                         (reader, result)
                     })
                     .await;
@@ -62,7 +69,14 @@ impl Monitor {
             disk_read: History::default(),
             disk_written: History::default(),
             error: None,
+            detailed,
         }
+    }
+
+    /// Turns per-process details (status, I/O, open files) on or off. They
+    /// cost several extra files per process, so only the Processes page asks.
+    pub fn set_detailed(&self, detailed: bool) {
+        self.detailed.store(detailed, Ordering::Relaxed);
     }
 
     /// `None` until the first sample lands, about a second after launch.

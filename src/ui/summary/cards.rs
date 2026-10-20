@@ -33,21 +33,22 @@ fn pressure(snapshot: &Snapshot, cx: &App) -> Div {
     let Some(pressure) = snapshot.pressure else {
         return panel("System pressure", None, cx).child(caption("This kernel doesn't report pressure (PSI)", cx));
     };
-    // Spelled out, so the level never depends on color alone.
-    let (level, color) = match pressure.highest() {
+    // Spelled out in the title row, so the level never depends on color alone.
+    let level = |value: f32| match value {
         p if p < 0.1 => ("Low", theme.success),
         p if p < 0.4 => ("Moderate", theme.warning),
         _ => ("High", theme.danger),
     };
+    let (label, color) = level(pressure.highest());
     let row = |label: &'static str, value: f32| {
         h_flex()
             .gap_2()
             .items_center()
             .child(div().w(px(52.)).text_xs().text_color(theme.muted_foreground).child(label))
-            .child(div().flex_1().h(px(METER_HEIGHT)).child(meter(value, color)))
+            .child(div().flex_1().h(px(METER_HEIGHT)).child(meter(value, level(value).1)))
             .child(div().w(px(44.)).text_xs().text_right().child(format::percent(value)))
     };
-    let trailing = div().text_xs().font_semibold().text_color(color).child(level).into_any_element();
+    let trailing = div().text_xs().font_semibold().text_color(color).child(label).into_any_element();
     panel("System pressure", Some(trailing), cx).child(
         v_flex()
             .gap_1p5()

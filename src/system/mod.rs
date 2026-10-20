@@ -1,6 +1,8 @@
 //! Everything purrtop reads about the machine, straight from `/proc` and `/sys`.
 
+pub mod control;
 pub mod cpu;
+pub mod details;
 pub mod format;
 pub mod gpu;
 pub mod history;
@@ -10,8 +12,10 @@ pub mod monitor;
 pub mod pressure;
 pub mod processes;
 pub mod sensors;
+pub mod users;
 
 use std::path::PathBuf;
+use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use cpu::StatTimes;
@@ -19,10 +23,10 @@ use gpu::{GpuDevice, GpuReading};
 use io::{DiskCounters, DiskRates, NetCounters, NetRates};
 use memory::Memory;
 use pressure::Pressure;
-use processes::{ProcessTracker, ProcessUsage};
+use processes::{ProcessInfo, ProcessScanner};
 use sensors::Clock;
 
-/// How many processes a snapshot keeps, busiest first.
+/// How many processes the busiest-first list keeps.
 pub const TOP_PROCESSES: usize = 64;
 
 /// One reading of the whole machine.
@@ -42,9 +46,10 @@ pub struct Snapshot {
     pub network: NetRates,
     pub disk: DiskRates,
     pub gpus: Vec<GpuReading>,
-    /// Busiest first, at most [`TOP_PROCESSES`].
-    pub top: Vec<ProcessUsage>,
-    pub processes: usize,
+    /// Every process. Shared, since pages hold on to it between readings.
+    pub processes: Arc<Vec<ProcessInfo>>,
+    /// Indices into `processes`, busiest first, at most [`TOP_PROCESSES`].
+    pub top: Vec<usize>,
     pub uptime: Duration,
     /// 1, 5 and 15 minute load averages.
     pub load: [f32; 3],
@@ -57,18 +62,18 @@ pub struct Reader {
     net: NetCounters,
     disk: DiskCounters,
     taken: Instant,
-    processes: ProcessTracker,
+    processes: ProcessScanner,
     temperature: Option<PathBuf>,
     gpus: Vec<GpuDevice>,
-    page_size: u64,
 }
 
 impl Reader {
     pub fn new() -> Self {
         let pci_ids = std::fs::read_to_string("/usr/share/hwdata/pci.ids").unwrap_or_default();
-        let mut processes = ProcessTracker::default();
-        // Prime the tracker so the first snapshot already has per-process usage.
-        processes.sample(processes::read_all(), 0, 1);
+        let page_size = page_size();
+        let mut processes = ProcessScanner::new(page_size, ticks_per_second());
+        // Prime the scanner so the first snapshot already has per-process usage.
+        processes.scan(false, 0, 0.);
         Self {
             previous: StatTimes::read().unwrap_or_default(),
             net: NetCounters::read().unwrap_or_default(),
@@ -77,11 +82,11 @@ impl Reader {
             processes,
             temperature: sensors::find_cpu_temperature(),
             gpus: GpuDevice::discover(&pci_ids),
-            page_size: page_size(),
         }
     }
 
-    pub fn sample(&mut self) -> std::io::Result<Snapshot> {
+    /// `detailed` also reads each process's status, I/O and open files.
+    pub fn sample(&mut self, detailed: bool) -> std::io::Result<Snapshot> {
         let stat = StatTimes::read()?;
         let now = Instant::now();
         let elapsed = now.duration_since(self.taken);
@@ -103,9 +108,9 @@ impl Reader {
         let disk_rates = DiskRates::between(self.disk, disk, elapsed);
         (self.net, self.disk, self.taken) = (net, disk, now);
 
-        let all = processes::read_all();
-        let processes = all.len();
-        let mut top = self.processes.sample(all, machine_ticks, self.page_size);
+        let processes = self.processes.scan(detailed, machine_ticks, elapsed.as_secs_f64());
+        let mut top: Vec<usize> = (0..processes.len()).collect();
+        top.sort_by(|&a, &b| processes[b].cpu.total_cmp(&processes[a].cpu).then(processes[b].memory.cmp(&processes[a].memory)));
         top.truncate(TOP_PROCESSES);
 
         Ok(Snapshot {
@@ -119,8 +124,8 @@ impl Reader {
             network,
             disk: disk_rates,
             gpus: self.gpus.iter().map(GpuDevice::read).collect(),
+            processes: Arc::new(processes),
             top,
-            processes,
             uptime: read_uptime().unwrap_or_default(),
             load: read_load().unwrap_or_default(),
         })
@@ -131,6 +136,12 @@ fn page_size() -> u64 {
     // SAFETY: sysconf only reads a system constant.
     let size = unsafe { libc::sysconf(libc::_SC_PAGESIZE) };
     if size > 0 { size as u64 } else { 4096 }
+}
+
+fn ticks_per_second() -> f64 {
+    // SAFETY: sysconf only reads a system constant.
+    let ticks = unsafe { libc::sysconf(libc::_SC_CLK_TCK) };
+    if ticks > 0 { ticks as f64 } else { 100. }
 }
 
 fn read_uptime() -> Option<Duration> {
@@ -167,10 +178,10 @@ mod tests {
     fn reads_this_machine() {
         let mut reader = Reader::new();
         std::thread::sleep(Duration::from_millis(200));
-        let snapshot = reader.sample().expect("/proc should be readable on Linux");
+        let snapshot = reader.sample(true).expect("/proc should be readable on Linux");
         assert!(!snapshot.cores.is_empty());
         assert!(snapshot.memory.total > 0);
-        assert!(snapshot.processes > 0);
+        assert!(!snapshot.processes.is_empty());
         assert!(!snapshot.top.is_empty() && snapshot.top.len() <= TOP_PROCESSES);
         assert!((0. ..=1.).contains(&snapshot.cpu));
         assert!(snapshot.kernel <= snapshot.cpu);

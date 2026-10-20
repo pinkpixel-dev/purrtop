@@ -10,7 +10,7 @@ purrtop is a colorful system monitor and task manager for Linux. It's a desktop 
 
 I wanted something closer to Windows Task Manager (or System Informer) on Linux, but prettier, with themes that actually have some color in them.
 
-> purrtop is early. Right now it has the app shell, a live Summary dashboard, and eight themes. Processes, Performance, Services, Disk Space and the rest are on the way.
+> purrtop is early. Right now it has the app shell, a live Summary dashboard, the Processes page, and eight themes. Performance, Services, Disk Space and the rest are on the way.
 
 ## What it does right now
 
@@ -20,6 +20,13 @@ I wanted something closer to Windows Task Manager (or System Informer) on Linux,
   - The busiest processes right now
   - A memory chart, plus cards for system pressure, network, disk and GPUs
 - GPUs are read in a way that never wakes a sleeping laptop GPU. The tradeoff is that NVIDIA cards only show whether they're awake, not usage
+- A Processes page that works a lot like Windows Task Manager's Details tab:
+  - Applications and Background groups with child processes folded under their parents, or one flat list
+  - Sortable, resizable columns for CPU, memory, disk I/O, threads, open files, nice and the full command
+  - Filter by name, user or PID
+  - New processes flash green, and ones that exit stay on screen in red for a moment
+  - A right-click menu to terminate, kill, suspend or resume a process or a whole tree, send signals, change the nice value or CPU affinity, take a stack sample, open the file location, and more
+  - A details dialog with the process's status, limits, environment and open files
 - Status bar with the current readings and a quick theme picker
 - Eight built-in themes: Neon, Rainbow, Cotton Candy, Sunset, Matcha, Midnight, Phosphor and Graphite
 - File / View / Help menu bar, with themes under View → Theme
@@ -47,6 +54,23 @@ If the window doesn't open, run `vulkaninfo --summary` to check your Vulkan setu
 |---|---|
 | `Ctrl+Q` | Quit |
 | `Alt+Down` / `Alt+Up` | Next / previous page |
+
+On the Processes page:
+
+| Keys | Action |
+|---|---|
+| `Up` / `Down`, `Page Up` / `Page Down`, `Home` / `End` | Move the selection |
+| `Right` / `Left` | Open or close a process's children (Left on a child jumps to its parent) |
+| `Enter` | Details for the selected process |
+| `Delete` | Terminate (SIGTERM) |
+| `Shift+Delete` | Force terminate (SIGKILL), after asking |
+| `Ctrl+F` | Filter |
+
+## Admin actions
+
+Ending, renicing or changing the CPU affinity of your own processes just works. For other users' processes (or a nice value below 0), purrtop runs the same command through `pkexec`, so your desktop's polkit agent asks for your password first.
+
+"Create process sample" uses `eu-stack` from elfutils, and it always goes through `pkexec`, since reading another process's stacks needs ptrace rights. The sample is saved to `~/.cache/purrtop/samples/` and opened in your text editor.
 
 ## Settings
 

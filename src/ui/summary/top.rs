@@ -28,7 +28,7 @@ pub fn render(snapshot: &Snapshot, palette: &Palette, cx: &App) -> Div {
         .child(div().w(px(CPU_WIDTH)).text_right().child("CPU"))
         .child(div().w(px(MEMORY_WIDTH)).text_right().child("Memory"));
 
-    let rows = snapshot.top.iter().map(|process| {
+    let rows = snapshot.top.iter().map(|&ix| &snapshot.processes[ix]).map(|process| {
         let busy = process.cpu >= HIGHLIGHT_CPU;
         h_flex()
             .h(px(ROW_HEIGHT))
@@ -49,7 +49,7 @@ pub fn render(snapshot: &Snapshot, palette: &Palette, cx: &App) -> Div {
             .child(div().w(px(MEMORY_WIDTH)).text_right().child(format::bytes(process.memory)))
     });
 
-    let trailing = caption(format!("{} running", snapshot.processes), cx).into_any_element();
+    let trailing = caption(format!("{} running", snapshot.processes.len()), cx).into_any_element();
     panel("Top processes", Some(trailing), cx).child(header).child(
         v_flex().id("top-processes").flex_1().min_h_0().gap_px().overflow_y_scrollbar().children(rows),
     )

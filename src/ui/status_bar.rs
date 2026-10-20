@@ -15,7 +15,7 @@ impl Purrtop {
         let monitor = self.monitor.read(cx);
         let (dot, state) = match (&monitor.error, monitor.latest()) {
             (Some(err), _) => (theme.danger, err.clone()),
-            (None, Some(snapshot)) => (theme.success, format!("Live · {} processes", snapshot.processes).into()),
+            (None, Some(snapshot)) => (theme.success, format!("Live · {} processes", snapshot.processes.len()).into()),
             (None, None) => (theme.muted_foreground, SharedString::from("Starting…")),
         };
         let readings = monitor.latest().map(|snapshot| {
