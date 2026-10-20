@@ -91,10 +91,11 @@
 - New Disk Space page that scans a folder and shows what's using the space. Pick your home folder, any mounted drive, or any folder through the desktop's folder picker
 - The scan adds up space on disk like `du` does: it stays on one drive, doesn't follow symlinks, and counts hard links once. Live counts while it runs, and Stop (`Esc`) keeps whatever it found so far
 - Three tabs: the 1,000 largest files, the 1,000 largest folders with their share of the scan, and totals by extension, each colored by file type
+- Bubbles tab: the 300 largest files packed as circles, sized by space and colored by type, with a legend. Big bubbles show their name and size, hovering shows a tooltip, clicking selects the file for the detail strip, and right-click has the same menu as the Files tab. It follows the filter, so `.mkv` shows just your videos
 - Folders you can't read without admin are skipped and counted instead of asking for a password
 - Right-click: open location, copy path, and Move to Trash (asks first, then takes the item off the lists and totals). On a type, "Show largest files" jumps to the Files tab filtered to that extension
 - Detail strip with size on disk and length, share, type, when it was modified, and the full path
-- Filter by name or path (`Ctrl+F`), `Ctrl+Tab` between tabs, `F5` to rescan, Enter to open the location, Delete to trash
+- Filter by name or path (`Ctrl+F`), `Ctrl+Tab` between tabs, `F5` to rescan, Enter to open the location, Delete to trash. The arrow keys work in the bubble view too
 
 ### ⚡ Processes
 - Other pages can send you to a process: it gets selected, its group and parents are opened, and the list scrolls to it

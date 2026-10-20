@@ -10,7 +10,7 @@ purrtop is a colorful system monitor and task manager for Linux. It's a desktop 
 
 I wanted something closer to Windows Task Manager (or System Informer) on Linux, but prettier, with themes that actually have some color in them.
 
-> purrtop is early. Right now it has the app shell, a live Summary dashboard, a Performance page for CPU, memory, battery, thermals, disks, network and GPUs, the Processes page, a System Info page with Hardware, Software, Network and Diagnostics tabs, a Startup apps page, a Users page, a Services page, a Ports page, the lists half of a Disk Space page, and eight themes. The Disk Space bubble view and the rest are on the way.
+> purrtop is early. Right now it has the app shell, a live Summary dashboard, a Performance page for CPU, memory, battery, thermals, disks, network and GPUs, the Processes page, a System Info page with Hardware, Software, Network and Diagnostics tabs, a Startup apps page, a Users page, a Services page, a Ports page, a Disk Space page, and eight themes. Polish and packaging are next.
 
 ## What it does right now
 
@@ -67,6 +67,7 @@ I wanted something closer to Windows Task Manager (or System Informer) on Linux,
   - The detail strip shows whether a port is reachable from this computer only or from every network, plus the full command line
 - A Disk Space page for finding what's eating your drive:
   - Scan your home folder, any mounted drive, or any folder you pick. It counts space on disk the same way `du` does and stays on one drive
+  - A bubble view of the 300 largest files, sized by space and colored by type. Hover for the name and size, click to select
   - See the 1,000 largest files, the 1,000 largest folders, and totals by extension, colored by file type
   - Right-click to open the location, copy the path, or move it to the Trash (it asks first)
   - Folders that need admin rights to read are skipped and counted, never prompted for
@@ -111,7 +112,7 @@ On the Services page, `Up`, `Down`, `Page Up`, `Page Down`, `Home` and `End` mov
 
 On the Ports page, `Up`, `Down`, `Page Up`, `Page Down`, `Home` and `End` move the selection, `Delete` ends the selected port's process and `Shift+Delete` kills it (both ask first), and `Ctrl+F` jumps to the filter.
 
-On the Disk Space page, `F5` scans again and `Esc` stops a running scan. In the tables, `Up`, `Down`, `Page Up`, `Page Down`, `Home` and `End` move the selection, `Enter` opens its location, `Delete` moves it to the Trash (after asking), `Ctrl+Tab` switches tabs, and `Ctrl+F` jumps to the filter.
+On the Disk Space page, `F5` scans again and `Esc` stops a running scan. In the bubble view and the tables, `Up`, `Down`, `Page Up`, `Page Down`, `Home` and `End` move the selection, `Enter` opens its location, `Delete` moves it to the Trash (after asking), `Ctrl+Tab` switches tabs, and `Ctrl+F` jumps to the filter.
 
 On the Users page, `Up`, `Down`, `Home` and `End` move the selection, and `Right` / `Left` open or close a user's processes (Left on a process jumps back to its user).
 

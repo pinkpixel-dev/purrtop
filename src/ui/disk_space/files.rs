@@ -58,6 +58,18 @@ impl FilesTable {
         self.files.len()
     }
 
+    pub fn file(&self, ix: usize) -> Option<&FileEntry> {
+        self.files.get(ix)
+    }
+
+    /// The `limit` largest files the filter lets through, largest first.
+    pub fn largest_visible(&self, limit: usize) -> Vec<usize> {
+        let mut rows = self.rows.clone();
+        rows.sort_by(|&a, &b| self.files[b].size.cmp(&self.files[a].size).then_with(|| a.cmp(&b)));
+        rows.truncate(limit);
+        rows
+    }
+
     pub fn selected_file(&self) -> Option<&FileEntry> {
         self.selected.and_then(|ix| self.files.get(ix))
     }

@@ -25,7 +25,7 @@ struct Target {
 impl DiskSpacePage {
     fn target(&self, cx: &App) -> Option<Target> {
         match self.tab {
-            SpaceTab::Files => self.files.read(cx).delegate().selected_file().map(|file| Target { path: file.path.clone(), size: file.size, files: 1, extension: Some(file.extension.clone()) }),
+            SpaceTab::Bubbles | SpaceTab::Files => self.files.read(cx).delegate().selected_file().map(|file| Target { path: file.path.clone(), size: file.size, files: 1, extension: Some(file.extension.clone()) }),
             SpaceTab::Folders => self.folders.read(cx).delegate().selected_folder().map(|folder| Target { path: folder.path.clone(), size: folder.size, files: folder.files, extension: None }),
             SpaceTab::Types => None,
         }
@@ -94,6 +94,7 @@ impl DiskSpacePage {
     /// Takes a trashed file or folder off every list and the totals.
     fn forget(&mut self, target: &Target, cx: &mut Context<Self>) {
         let is_file = target.extension.is_some();
+        self.forget_bubbles();
         self.files.update(cx, |state, cx| {
             state.delegate_mut().remove(&target.path);
             cx.notify();

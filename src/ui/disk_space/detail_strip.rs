@@ -64,7 +64,7 @@ impl DiskSpacePage {
         let share = |size: u64| parts::percent(parts::fraction(size, total));
         let dash = || "—".to_string();
         match self.tab {
-            SpaceTab::Files => {
+            SpaceTab::Bubbles | SpaceTab::Files => {
                 let file = self.files.read(cx).delegate().selected_file()?;
                 Some((
                     [

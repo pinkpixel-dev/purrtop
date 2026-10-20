@@ -2,14 +2,17 @@
 //! as the largest files, the largest folders, and totals by type.
 
 mod actions;
+mod bubbles;
 mod detail_strip;
 mod files;
 mod folders;
+mod packing;
 mod parts;
 mod toolbar;
 mod types;
 
 use std::path::PathBuf;
+use std::rc::Rc;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
@@ -21,6 +24,7 @@ use gpui_kit::component::notification::Notification;
 use gpui_kit::*;
 use serde::Deserialize;
 
+use self::bubbles::Bubble;
 use self::files::FilesTable;
 use self::folders::FoldersTable;
 use self::parts::Rows;
@@ -28,8 +32,8 @@ use self::types::TypesTable;
 use crate::system::disk_scan::{self, Counts, Progress, Scan};
 
 const CONTEXT: &str = "DiskSpace";
-/// Only while a table has focus, so typing in the filter is untouched.
-const TABLE_CONTEXT: &str = "DiskSpace > DataTable";
+/// Only while a table or the bubbles have focus, so typing in the filter is untouched.
+const LIST_CONTEXTS: [&str; 2] = ["DiskSpace > DataTable", "DiskSpace > Bubbles"];
 const PAGE_ROWS: usize = 20;
 /// How often the running counts redraw during a scan.
 const TICK: Duration = Duration::from_millis(250);
@@ -62,15 +66,19 @@ actions!(
 pub struct ScanFolder(pub String);
 
 pub fn init(cx: &mut App) {
+    for context in LIST_CONTEXTS {
+        cx.bind_keys([
+            KeyBinding::new("down", SelectNext, Some(context)),
+            KeyBinding::new("up", SelectPrevious, Some(context)),
+            KeyBinding::new("home", SelectFirst, Some(context)),
+            KeyBinding::new("end", SelectLast, Some(context)),
+            KeyBinding::new("pagedown", SelectPageDown, Some(context)),
+            KeyBinding::new("pageup", SelectPageUp, Some(context)),
+            KeyBinding::new("delete", MoveToTrash, Some(context)),
+            KeyBinding::new("enter", OpenLocation, Some(context)),
+        ]);
+    }
     cx.bind_keys([
-        KeyBinding::new("down", SelectNext, Some(TABLE_CONTEXT)),
-        KeyBinding::new("up", SelectPrevious, Some(TABLE_CONTEXT)),
-        KeyBinding::new("home", SelectFirst, Some(TABLE_CONTEXT)),
-        KeyBinding::new("end", SelectLast, Some(TABLE_CONTEXT)),
-        KeyBinding::new("pagedown", SelectPageDown, Some(TABLE_CONTEXT)),
-        KeyBinding::new("pageup", SelectPageUp, Some(TABLE_CONTEXT)),
-        KeyBinding::new("delete", MoveToTrash, Some(TABLE_CONTEXT)),
-        KeyBinding::new("enter", OpenLocation, Some(TABLE_CONTEXT)),
         KeyBinding::new("ctrl-f", FocusFilter, Some(CONTEXT)),
         KeyBinding::new("ctrl-tab", NextTab, Some(CONTEXT)),
         KeyBinding::new("ctrl-shift-tab", PreviousTab, Some(CONTEXT)),
@@ -82,16 +90,18 @@ pub fn init(cx: &mut App) {
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 enum SpaceTab {
     #[default]
+    Bubbles,
     Files,
     Folders,
     Types,
 }
 
 impl SpaceTab {
-    const ALL: [SpaceTab; 3] = [SpaceTab::Files, SpaceTab::Folders, SpaceTab::Types];
+    const ALL: [SpaceTab; 4] = [SpaceTab::Bubbles, SpaceTab::Files, SpaceTab::Folders, SpaceTab::Types];
 
     fn label(self) -> &'static str {
         match self {
+            SpaceTab::Bubbles => "Bubbles",
             SpaceTab::Files => "Largest files",
             SpaceTab::Folders => "Largest folders",
             SpaceTab::Types => "Types",
@@ -134,6 +144,11 @@ pub struct DiskSpacePage {
     summary: Option<Summary>,
     scanning: Option<Scanning>,
     error: Option<String>,
+    /// The packed bubbles, until the files or the filter change.
+    bubbles: Option<Rc<Vec<Bubble>>>,
+    /// The file under the pointer in the bubble view, as a Files table index.
+    hovered: Option<usize>,
+    bubbles_focus: FocusHandle,
     focus_handle: FocusHandle,
     _subscription: Subscription,
 }
@@ -154,7 +169,7 @@ impl DiskSpacePage {
             _ => {}
         });
         let root = std::env::var_os("HOME").map_or_else(|| PathBuf::from("/"), PathBuf::from);
-        Self { files, folders, types, filter, tab: SpaceTab::default(), root, summary: None, scanning: None, error: None, focus_handle: cx.focus_handle(), _subscription: subscription }
+        Self { files, folders, types, filter, tab: SpaceTab::default(), root, summary: None, scanning: None, error: None, bubbles: None, hovered: None, bubbles_focus: cx.focus_handle(), focus_handle: cx.focus_handle(), _subscription: subscription }
     }
 
     /// Showing the page hands it the keyboard. Scans keep running while it's hidden.
@@ -170,6 +185,7 @@ impl DiskSpacePage {
             return;
         }
         match self.tab {
+            SpaceTab::Bubbles => self.bubbles_focus.focus(window, cx),
             SpaceTab::Files => self.files.read(cx).focus_handle(cx).focus(window, cx),
             SpaceTab::Folders => self.folders.read(cx).focus_handle(cx).focus(window, cx),
             SpaceTab::Types => self.types.read(cx).focus_handle(cx).focus(window, cx),
@@ -224,6 +240,7 @@ impl DiskSpacePage {
                     state.delegate_mut().set_types(scan.types, total);
                     cx.notify();
                 });
+                self.forget_bubbles();
                 self.summary = Some(Summary { counts: scan.counts, elapsed: scan.elapsed, stopped: scan.stopped });
             }
             Err(err) => self.error = Some(err),
@@ -232,7 +249,14 @@ impl DiskSpacePage {
         cx.notify();
     }
 
+    /// Packs the bubbles again on the next render.
+    fn forget_bubbles(&mut self) {
+        self.bubbles = None;
+        self.hovered = None;
+    }
+
     fn set_filter(&mut self, text: String, cx: &mut Context<Self>) {
+        self.forget_bubbles();
         let apply = |filter: &mut String| *filter = text.clone();
         self.files.update(cx, |state, cx| {
             apply(&mut state.delegate_mut().filter);
@@ -309,7 +333,7 @@ impl DiskSpacePage {
 
     fn move_selection(&mut self, to: Move, cx: &mut Context<Self>) {
         match self.tab {
-            SpaceTab::Files => move_in(&self.files, to, cx),
+            SpaceTab::Bubbles | SpaceTab::Files => move_in(&self.files, to, cx),
             SpaceTab::Folders => move_in(&self.folders, to, cx),
             SpaceTab::Types => move_in(&self.types, to, cx),
         }
@@ -344,20 +368,26 @@ impl DiskSpacePage {
         self.filter.update(cx, |filter, cx| filter.focus(window, cx));
     }
 
-    fn render_results(&self, cx: &mut Context<Self>) -> impl IntoElement {
-        let theme = cx.theme();
+    fn render_results(&mut self, cx: &mut Context<Self>) -> impl IntoElement {
         let selected = SpaceTab::ALL.iter().position(|&tab| tab == self.tab).unwrap_or(0);
-        let counts = [self.files.read(cx).delegate().len(), self.folders.read(cx).delegate().len(), self.types.read(cx).delegate().len()];
+        let counts = [None, Some(self.files.read(cx).delegate().len()), Some(self.folders.read(cx).delegate().len()), Some(self.types.read(cx).delegate().len())];
         let tabs = TabBar::new("disk-space-tabs")
             .underline()
             .selected_index(selected)
-            .children(SpaceTab::ALL.iter().zip(counts).map(|(tab, count)| Tab::new().label(format!("{} ({count})", tab.label()))))
+            .children(SpaceTab::ALL.iter().zip(counts).map(|(tab, count)| {
+                Tab::new().label(match count {
+                    Some(count) => format!("{} ({count})", tab.label()),
+                    None => tab.label().to_string(),
+                })
+            }))
             .on_click(cx.listener(|this, ix: &usize, window, cx| this.select_tab(SpaceTab::ALL[(*ix).min(SpaceTab::ALL.len() - 1)], window, cx)));
         let table = match self.tab {
+            SpaceTab::Bubbles => self.render_bubbles(cx),
             SpaceTab::Files => DataTable::new(&self.files).bordered(false).into_any_element(),
             SpaceTab::Folders => DataTable::new(&self.folders).bordered(false).into_any_element(),
             SpaceTab::Types => DataTable::new(&self.types).bordered(false).into_any_element(),
         };
+        let theme = cx.theme();
         v_flex()
             .flex_1()
             .min_h_0()
