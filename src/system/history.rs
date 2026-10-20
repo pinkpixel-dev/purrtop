@@ -23,14 +23,6 @@ impl History {
     pub fn values(&self) -> impl ExactSizeIterator<Item = f32> + '_ {
         self.values.iter().copied()
     }
-
-    pub fn latest(&self) -> Option<f32> {
-        self.values.back().copied()
-    }
-
-    pub fn len(&self) -> usize {
-        self.values.len()
-    }
 }
 
 #[cfg(test)]
@@ -43,8 +35,8 @@ mod tests {
         for ix in 0..HISTORY_LEN + 5 {
             history.push(ix as f32);
         }
-        assert_eq!(history.len(), HISTORY_LEN);
+        assert_eq!(history.values().len(), HISTORY_LEN);
         assert_eq!(history.values().next(), Some(5.));
-        assert_eq!(history.latest(), Some((HISTORY_LEN + 4) as f32));
+        assert_eq!(history.values().last(), Some((HISTORY_LEN + 4) as f32));
     }
 }

@@ -1,4 +1,5 @@
 mod about;
+mod charts;
 mod page;
 mod sidebar;
 mod status_bar;
@@ -97,9 +98,9 @@ impl Purrtop {
         about::open(window, cx);
     }
 
-    fn render_page(&self, cx: &mut Context<Self>) -> AnyElement {
+    fn render_page(&self, window: &Window, cx: &mut Context<Self>) -> AnyElement {
         match self.page {
-            Page::Summary => summary::render(self.monitor.read(cx), cx),
+            Page::Summary => summary::render(self.monitor.read(cx), window, cx),
         }
     }
 }
@@ -111,7 +112,7 @@ impl Focusable for Purrtop {
 }
 
 impl Render for Purrtop {
-    fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         v_flex()
             .key_context(KEY_CONTEXT)
             .track_focus(&self.focus_handle)
@@ -127,7 +128,7 @@ impl Render for Purrtop {
                     .flex_1()
                     .min_h_0()
                     .child(self.render_sidebar(cx))
-                    .child(div().flex_1().min_w_0().h_full().child(self.render_page(cx))),
+                    .child(div().flex_1().min_w_0().h_full().child(self.render_page(window, cx))),
             )
             .child(self.render_status_bar(cx))
     }

@@ -10,11 +10,16 @@ purrtop is a colorful system monitor and task manager for Linux. It's a desktop 
 
 I wanted something closer to Windows Task Manager (or System Informer) on Linux, but prettier, with themes that actually have some color in them.
 
-> purrtop is early. Right now it has the app shell, a live Summary page, and eight themes. Processes, Performance, Services, Disk Space and the rest are on the way.
+> purrtop is early. Right now it has the app shell, a live Summary dashboard, and eight themes. Processes, Performance, Services, Disk Space and the rest are on the way.
 
 ## What it does right now
 
-- Live Summary page with CPU, memory, swap, process count and uptime, updated every second
+- A live Summary dashboard, updated every second:
+  - LED columns for CPU, clock speed, CPU temperature and GPU
+  - A CPU chart with utilization, kernel time and temperature over the last two minutes
+  - The busiest processes right now
+  - A memory chart, plus cards for system pressure, network, disk and GPUs
+- GPUs are read in a way that never wakes a sleeping laptop GPU. The tradeoff is that NVIDIA cards only show whether they're awake, not usage
 - Status bar with the current readings and a quick theme picker
 - Eight built-in themes: Neon, Rainbow, Cotton Candy, Sunset, Matcha, Midnight, Phosphor and Graphite
 - File / View / Help menu bar, with themes under View → Theme

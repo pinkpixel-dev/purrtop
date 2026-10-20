@@ -17,6 +17,21 @@ pub fn bytes(value: u64) -> String {
     format!("{size:.1} {}", UNITS[unit])
 }
 
+/// Bytes per second: `1.2 MB/s`.
+pub fn rate(bytes_per_second: f64) -> String {
+    format!("{}/s", bytes(bytes_per_second.max(0.) as u64))
+}
+
+/// `1.41 GHz`, or `800 MHz` under a gigahertz.
+pub fn frequency(mhz: f32) -> String {
+    if mhz >= 1000. { format!("{:.2} GHz", mhz / 1000.) } else { format!("{mhz:.0} MHz") }
+}
+
+/// Whole degrees: `62 °C`.
+pub fn celsius(degrees: f32) -> String {
+    format!("{degrees:.0} °C")
+}
+
 /// A 0 to 1 share as a percentage with one decimal.
 pub fn percent(fraction: f32) -> String {
     format!("{:.1}%", fraction * 100.)
@@ -43,6 +58,15 @@ mod tests {
         assert_eq!(bytes(1023), "1023 B");
         assert_eq!(bytes(1536), "1.5 KB");
         assert_eq!(bytes(8_912_896_000), "8.3 GB");
+    }
+
+    #[test]
+    fn formats_rates_clocks_and_temperatures() {
+        assert_eq!(rate(1536.), "1.5 KB/s");
+        assert_eq!(rate(-5.), "0 B/s");
+        assert_eq!(frequency(1410.), "1.41 GHz");
+        assert_eq!(frequency(800.4), "800 MHz");
+        assert_eq!(celsius(61.6), "62 °C");
     }
 
     #[test]
