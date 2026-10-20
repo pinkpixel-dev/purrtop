@@ -4,15 +4,25 @@
 use gpui_kit::component::{ActiveTheme as _, StyledExt as _, h_flex, v_flex};
 use gpui_kit::*;
 
+use crate::system::history::History;
 use crate::ui::charts::meter;
 
 const METER_HEIGHT: f32 = 14.;
 const FACT_LABEL_WIDTH: f32 = 140.;
 const FACT_COLUMN_MIN_WIDTH: f32 = 280.;
+/// The smallest scale network and disk charts use, in bytes per second, so a
+/// quiet device doesn't turn tiny blips into full-height spikes.
+pub const NETWORK_FLOOR: f32 = 64. * 1024.;
+pub const DISK_FLOOR: f32 = 1024. * 1024.;
+
+/// One scale for several rate histories, so their lines compare honestly.
+pub fn shared_scale<'a>(histories: impl IntoIterator<Item = &'a History>, floor: f32) -> f32 {
+    histories.into_iter().flat_map(|history| history.values()).fold(floor, f32::max)
+}
 
 /// The device name with a muted subtitle, then a meter lit to `fraction`
 /// with the reading beside it.
-pub fn header(title: &'static str, subtitle: String, fraction: f32, value: String, color: Hsla, cx: &App) -> Div {
+pub fn header(title: impl Into<SharedString>, subtitle: String, fraction: f32, value: String, color: Hsla, cx: &App) -> Div {
     let theme = cx.theme();
     v_flex()
         .flex_shrink_0()
@@ -22,7 +32,7 @@ pub fn header(title: &'static str, subtitle: String, fraction: f32, value: Strin
                 .gap_3()
                 .items_baseline()
                 .justify_between()
-                .child(div().text_xl().font_semibold().child(title))
+                .child(div().flex_shrink_0().text_xl().font_semibold().child(title.into()))
                 .child(div().min_w_0().text_sm().text_color(theme.muted_foreground).truncate().child(subtitle)),
         )
         .child(

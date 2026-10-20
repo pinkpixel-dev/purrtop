@@ -1,6 +1,7 @@
 //! The live feed every page reads from: a snapshot each second, off the UI
 //! thread, plus short histories for charts.
 
+use std::collections::HashMap;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
@@ -12,6 +13,21 @@ use super::{Reader, Snapshot};
 
 /// How often the machine is sampled.
 pub const SAMPLE_INTERVAL: Duration = Duration::from_secs(1);
+
+/// One disk's busy share and read and write rates.
+#[derive(Default)]
+pub struct DiskHistory {
+    pub busy: History,
+    pub read: History,
+    pub written: History,
+}
+
+/// One interface's receive and send rates.
+#[derive(Default)]
+pub struct NetHistory {
+    pub received: History,
+    pub sent: History,
+}
 
 pub struct Monitor {
     latest: Option<Snapshot>,
@@ -28,6 +44,9 @@ pub struct Monitor {
     pub sent: History,
     pub disk_read: History,
     pub disk_written: History,
+    /// Per disk and per interface, by kernel name.
+    pub disks: HashMap<String, DiskHistory>,
+    pub interfaces: HashMap<String, NetHistory>,
     /// Set when the last sample failed, cleared by the next good one.
     pub error: Option<SharedString>,
     /// Shared with the sampling loop: read per-process details too.
@@ -75,6 +94,8 @@ impl Monitor {
             sent: History::default(),
             disk_read: History::default(),
             disk_written: History::default(),
+            disks: HashMap::new(),
+            interfaces: HashMap::new(),
             error: None,
             detailed,
         }
@@ -107,6 +128,19 @@ impl Monitor {
                 self.sent.push(snapshot.network.sent as f32);
                 self.disk_read.push(snapshot.disk.read as f32);
                 self.disk_written.push(snapshot.disk.written as f32);
+                self.disks.retain(|name, _| snapshot.disks.iter().any(|disk| disk.name == *name));
+                for disk in &snapshot.disks {
+                    let history = self.disks.entry(disk.name.clone()).or_default();
+                    history.busy.push(disk.rates.busy);
+                    history.read.push(disk.rates.read as f32);
+                    history.written.push(disk.rates.written as f32);
+                }
+                self.interfaces.retain(|name, _| snapshot.interfaces.iter().any(|interface| interface.name == *name));
+                for interface in &snapshot.interfaces {
+                    let history = self.interfaces.entry(interface.name.clone()).or_default();
+                    history.received.push(interface.rates.received as f32);
+                    history.sent.push(interface.rates.sent as f32);
+                }
                 self.latest = Some(snapshot);
                 self.error = None;
             }

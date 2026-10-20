@@ -18,6 +18,8 @@
 - CPU view: a meter, a chart for every logical processor with kernel time, and P-core and E-core labels on hybrid Intel chips
 - CPU stats and specs: speed, temperature, processes, threads, up time, load, base and max speed, sockets, cores, virtualization, frequency driver and governor
 - Memory view: use and swap over time, a bar split into in use, cached and free, and commit charge
+- Every disk gets its own entry: active time, read and write charts, response time, model and type, and each mounted volume with its free space
+- Every physical network interface gets its own entry: receive and send chart, totals since boot, state, link speed, MAC, IPv4 and IPv6
 - `Up` and `Down` move through the device list, and the list drops its sparklines in narrow windows
 
 ### 🐾 Processes

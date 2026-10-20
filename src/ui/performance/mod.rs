@@ -3,7 +3,9 @@
 
 mod cpu;
 mod devices;
+mod disk;
 mod memory;
+mod network;
 mod parts;
 
 use gpui_kit::component::scroll::ScrollableElement as _;
@@ -62,10 +64,13 @@ impl PerformancePage {
     }
 
     fn step(&mut self, forward: bool, cx: &mut Context<Self>) {
-        let all = Device::ALL;
-        let current = all.iter().position(|&device| device == self.device).unwrap_or(0);
+        let Some(snapshot) = self.monitor.read(cx).latest() else {
+            return;
+        };
+        let all = Device::list(snapshot);
+        let current = all.iter().position(|device| *device == self.device).unwrap_or(0);
         let next = if forward { (current + 1).min(all.len() - 1) } else { current.saturating_sub(1) };
-        self.device = all[next];
+        self.device = all[next].clone();
         cx.notify();
     }
 
@@ -114,12 +119,27 @@ impl Render for PerformancePage {
         let viewport = window.viewport_size();
         let compact = f32::from(viewport.width) < COMPACT_LAYOUT;
         let focused = self.focus_handle.is_focused(window);
-        let list = devices::render(self.device, focused, compact, monitor, snapshot, &palette, cx, |device| {
-            Box::new(cx.listener(move |this, _, window, cx| this.select(device, window, cx)))
+        let all = Device::list(snapshot);
+        // The selected disk or interface went away: fall back to the CPU.
+        if !all.contains(&self.device) {
+            self.device = Device::Cpu;
+        }
+        let list = devices::render(&all, &self.device, focused, compact, monitor, snapshot, &palette, cx, |device| {
+            Box::new(cx.listener(move |this, _, window, cx| this.select(device.clone(), window, cx)))
         });
-        let detail = match self.device {
-            Device::Cpu => cpu::render(monitor, snapshot, &palette, viewport, compact, cx),
+        let disk = |name: &String| Some((snapshot.disks.iter().find(|disk| disk.name == *name)?, monitor.disks.get(name)?));
+        let interface = |name: &String| {
+            Some((snapshot.interfaces.iter().find(|interface| interface.name == *name)?, monitor.interfaces.get(name)?))
+        };
+        let detail = match &self.device {
             Device::Memory => memory::render(monitor, snapshot, &palette, viewport, cx),
+            Device::Disk(name) if let Some((disk, history)) = disk(name) => {
+                disk::render(disk, history, snapshot, &palette, viewport, cx)
+            }
+            Device::Network(name) if let Some((interface, history)) = interface(name) => {
+                network::render(interface, history, snapshot, &palette, viewport, cx)
+            }
+            _ => cpu::render(monitor, snapshot, &palette, viewport, compact, cx),
         };
 
         page.child(

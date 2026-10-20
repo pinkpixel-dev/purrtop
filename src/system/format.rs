@@ -37,6 +37,21 @@ pub fn percent(fraction: f32) -> String {
     format!("{:.1}%", fraction * 100.)
 }
 
+/// Link speed: `1 Gbit/s`, `2.5 Gbit/s`, `100 Mbit/s`.
+pub fn link_speed(mbps: u32) -> String {
+    if mbps >= 1000 {
+        let gbps = format!("{:.1}", mbps as f32 / 1000.);
+        format!("{} Gbit/s", gbps.trim_end_matches(".0"))
+    } else {
+        format!("{mbps} Mbit/s")
+    }
+}
+
+/// `0.4 ms`, or whole milliseconds from 10 up.
+pub fn milliseconds(ms: f32) -> String {
+    if ms < 10. { format!("{ms:.1} ms") } else { format!("{ms:.0} ms") }
+}
+
 /// `3d 4:05:06`, or `4:05:06` under a day.
 pub fn uptime(duration: Duration) -> String {
     let total = duration.as_secs();
@@ -67,6 +82,11 @@ mod tests {
         assert_eq!(frequency(1410.), "1.41 GHz");
         assert_eq!(frequency(800.4), "800 MHz");
         assert_eq!(celsius(61.6), "62 °C");
+        assert_eq!(link_speed(1000), "1 Gbit/s");
+        assert_eq!(link_speed(2500), "2.5 Gbit/s");
+        assert_eq!(link_speed(100), "100 Mbit/s");
+        assert_eq!(milliseconds(0.42), "0.4 ms");
+        assert_eq!(milliseconds(12.6), "13 ms");
     }
 
     #[test]
