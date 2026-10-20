@@ -10,7 +10,7 @@ purrtop is a colorful system monitor and task manager for Linux. It's a desktop 
 
 I wanted something closer to Windows Task Manager (or System Informer) on Linux, but prettier, with themes that actually have some color in them.
 
-> purrtop is early. Right now it has the app shell, a live Summary dashboard, a Performance page for CPU, memory, battery, thermals, disks, network and GPUs, the Processes page, a System Info page with Hardware, Software, Network and Diagnostics tabs, a Startup apps page, a Users page, and eight themes. Services, Disk Space and the rest are on the way.
+> purrtop is early. Right now it has the app shell, a live Summary dashboard, a Performance page for CPU, memory, battery, thermals, disks, network and GPUs, the Processes page, a System Info page with Hardware, Software, Network and Diagnostics tabs, a Startup apps page, a Users page, a Services page, and eight themes. Disk Space and the rest are on the way.
 
 ## What it does right now
 
@@ -54,6 +54,12 @@ I wanted something closer to Windows Task Manager (or System Informer) on Linux,
   - Open a user to see their processes, busiest first
   - Right-click to lock a user's sessions or sign them out. Sign out asks first, since everything in the session closes (purrtop too, if it's your own)
   - Memory is each process's resident memory added up, so libraries shared between processes count more than once. It runs a bit high compared to the Memory page
+- A Services page for systemd services, either the system ones or your own user services:
+  - State, startup setting, main PID and memory for every service, with failed ones at the top and stopped ones that won't start on their own folded away
+  - It stays live: purrtop listens to systemd over D-Bus and updates as soon as something starts, stops or fails
+  - Right-click to start, stop, restart, enable or disable a service, or jump to its main process on the Processes page
+  - System services ask for your password through polkit, and systemd's default policy remembers it for a few minutes
+  - The detail strip shows the unit file, when it last changed state, and the last few lines of its log
 - File → Run new task (`Ctrl+N`) to start any command, like Windows Task Manager's Run dialog. It keeps running after you close purrtop
 - Status bar with the current readings and a quick theme picker
 - Eight built-in themes: Neon, Rainbow, Cotton Candy, Sunset, Matcha, Midnight, Phosphor and Graphite
@@ -89,6 +95,8 @@ On the Performance page, `Up` and `Down` move through the device list.
 On the System Info page, `Ctrl+Tab` and `Ctrl+Shift+Tab` switch tabs.
 
 On the Startup apps page, `Up`, `Down`, `Home` and `End` move the selection, `Space` turns the selected entry on or off, and `F5` reads the folders again.
+
+On the Services page, `Up`, `Down`, `Page Up`, `Page Down`, `Home` and `End` move the selection, and `Ctrl+F` jumps to the filter.
 
 On the Users page, `Up`, `Down`, `Home` and `End` move the selection, and `Right` / `Left` open or close a user's processes (Left on a process jumps back to its user).
 

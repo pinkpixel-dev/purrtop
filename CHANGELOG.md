@@ -67,6 +67,20 @@
 - Detail strip with the UID, how long they've been signed in, the busiest process and every session, or a selected process's command line
 - Keyboard: arrows, Home and End to move, `Right` and `Left` to open and close a user
 
+### ⚙️ Services
+- New Services page listing every systemd service, from the system instance or your user instance (switch in the toolbar)
+- Shows each service's state (running, exited, failed, starting, stopping or stopped), startup setting (enabled, disabled, static, masked and so on), main PID and memory
+- Failed services sort to the top and the count shows in red in the toolbar. Stopped services that won't start on their own are folded into a "Stopped" group
+- Live: purrtop talks to systemd over D-Bus and re-reads the list when systemd says something changed, plus every 5 seconds for memory
+- Right-click: start, stop, restart, enable, disable, open in Processes, copy name. Enable and disable reload systemd afterwards, like `systemctl enable` does
+- System services ask for your password through polkit. systemd's default policy remembers it for a few minutes
+- Detail strip with the unit, its state, startup setting, main PID, memory, when it last changed, its unit file, and the last few journal lines
+- Filter by name or description (`Ctrl+F`)
+- Keyboard: arrows, Page Up and Page Down, Home and End to move
+
+### ⚡ Processes
+- Other pages can send you to a process: it gets selected, its group and parents are opened, and the list scrolls to it
+
 ### 📊 Summary
 - Pressure meters each take the color of their own level
 

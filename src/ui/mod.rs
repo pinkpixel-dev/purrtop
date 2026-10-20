@@ -4,6 +4,7 @@ mod page;
 mod performance;
 mod processes;
 mod run_task;
+mod services;
 mod sidebar;
 mod startup;
 mod status_bar;
@@ -22,6 +23,7 @@ pub use page::Page;
 
 use self::performance::PerformancePage;
 use self::processes::ProcessesPage;
+use self::services::ServicesPage;
 use self::startup::StartupPage;
 use self::system_info::SystemInfoPage;
 use self::users::UsersPage;
@@ -39,6 +41,11 @@ actions!(purrtop, [Quit, About, NextPage, PreviousPage, RunTask]);
 #[action(namespace = purrtop, no_json)]
 pub struct SwitchTheme(pub usize);
 
+/// Switches to the Processes page with this PID selected.
+#[derive(Clone, PartialEq, Deserialize, Action)]
+#[action(namespace = purrtop, no_json)]
+pub struct ShowProcess(pub u32);
+
 pub fn init(cx: &mut App) {
     cx.bind_keys([
         KeyBinding::new("ctrl-q", Quit, None),
@@ -51,6 +58,7 @@ pub fn init(cx: &mut App) {
     system_info::init(cx);
     startup::init(cx);
     users::init(cx);
+    services::init(cx);
     cx.on_action(|_: &Quit, cx| cx.quit());
     // App-wide so the menu bar and the status bar picker both reach it.
     cx.on_action(|action: &SwitchTheme, cx| {
@@ -68,6 +76,7 @@ pub struct Purrtop {
     system_info: Entity<SystemInfoPage>,
     startup: Entity<StartupPage>,
     users: Entity<UsersPage>,
+    services: Entity<ServicesPage>,
     menu_bar: Entity<AppMenuBar>,
     page: Page,
     _subscriptions: Vec<Subscription>,
@@ -81,6 +90,7 @@ impl Purrtop {
         let system_info = cx.new(|cx| SystemInfoPage::new(monitor.clone(), cx));
         let startup = cx.new(|cx| StartupPage::new(window, cx));
         let users = cx.new(|cx| UsersPage::new(monitor.clone(), window, cx));
+        let services = cx.new(|cx| ServicesPage::new(window, cx));
         let menu_bar = AppMenuBar::new(cx);
         let subscriptions = vec![
             cx.observe(&monitor, |_, _, cx| cx.notify()),
@@ -90,7 +100,7 @@ impl Purrtop {
         let focus_handle = cx.focus_handle();
         focus_handle.focus(window, cx);
 
-        Self { focus_handle, monitor, performance, processes, system_info, startup, users, menu_bar, page: Page::default(), _subscriptions: subscriptions }
+        Self { focus_handle, monitor, performance, processes, system_info, startup, users, services, menu_bar, page: Page::default(), _subscriptions: subscriptions }
     }
 
     /// Refreshes the menu check marks and remembers the pick for next launch.
@@ -109,6 +119,7 @@ impl Purrtop {
         self.system_info.update(cx, |system_info, cx| system_info.set_active(page == Page::SystemInfo, window, cx));
         self.startup.update(cx, |startup, cx| startup.set_active(page == Page::Startup, window, cx));
         self.users.update(cx, |users, cx| users.set_active(page == Page::Users, window, cx));
+        self.services.update(cx, |services, cx| services.set_active(page == Page::Services, window, cx));
         cx.notify();
     }
 
@@ -131,6 +142,11 @@ impl Purrtop {
         about::open(window, cx);
     }
 
+    fn show_process(&mut self, action: &ShowProcess, window: &mut Window, cx: &mut Context<Self>) {
+        self.set_page(Page::Processes, window, cx);
+        self.processes.update(cx, |processes, cx| processes.reveal(action.0, cx));
+    }
+
     fn run_task(&mut self, _: &RunTask, window: &mut Window, cx: &mut Context<Self>) {
         run_task::open(window, cx);
     }
@@ -143,6 +159,7 @@ impl Purrtop {
             Page::SystemInfo => self.system_info.clone().into_any_element(),
             Page::Startup => self.startup.clone().into_any_element(),
             Page::Users => self.users.clone().into_any_element(),
+            Page::Services => self.services.clone().into_any_element(),
         }
     }
 }
@@ -162,6 +179,7 @@ impl Render for Purrtop {
             .on_action(cx.listener(Self::previous_page))
             .on_action(cx.listener(Self::about))
             .on_action(cx.listener(Self::run_task))
+            .on_action(cx.listener(Self::show_process))
             .size_full()
             .bg(cx.theme().background)
             .text_color(cx.theme().foreground)

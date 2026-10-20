@@ -173,6 +173,35 @@ impl ProcessesPage {
         cx.notify();
     }
 
+    /// Selects a process and scrolls to it, opening its parents and its group
+    /// in the tree. Used when another page sends you here.
+    pub fn reveal(&mut self, pid: u32, cx: &mut Context<Self>) {
+        self.table.update(cx, |state, cx| {
+            let table = state.delegate_mut();
+            let Some((kind, mut parent)) = table.process(pid).map(|process| (process.kind, process.ppid)) else {
+                return;
+            };
+            table.collapsed_groups.remove(&kind);
+            // The depth cap guards against a malformed parent chain.
+            for _ in 0..256 {
+                let Some(ancestor) = table.process(parent).map(|process| (process.pid, process.ppid)) else {
+                    break;
+                };
+                if !table.expanded.insert(ancestor.0) || ancestor.1 == ancestor.0 {
+                    break;
+                }
+                parent = ancestor.1;
+            }
+            table.rebuild();
+            table.selected = Some(pid);
+            if let Some(row) = table.row_of(pid) {
+                state.vertical_scroll_handle.scroll_to_item(row, ScrollStrategy::Center);
+            }
+            cx.notify();
+        });
+        cx.notify();
+    }
+
     fn update_table(&mut self, cx: &mut Context<Self>, f: impl FnOnce(&mut ProcessTable)) {
         self.table.update(cx, |state, cx| {
             f(state.delegate_mut());

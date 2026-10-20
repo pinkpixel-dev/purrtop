@@ -21,6 +21,7 @@ pub mod network;
 pub mod pressure;
 pub mod processes;
 pub mod sensors;
+pub mod services;
 pub mod sessions;
 pub mod software;
 pub mod thermals;
