@@ -10,7 +10,7 @@ purrtop is a colorful system monitor and task manager for Linux. It's a desktop 
 
 I wanted something closer to Windows Task Manager (or System Informer) on Linux, but prettier, with themes that actually have some color in them.
 
-> purrtop is early. Right now it has the app shell, a live Summary dashboard, a Performance page for CPU, memory, battery, thermals, disks, network and GPUs, the Processes page, a System Info page with Hardware, Software, Network and Diagnostics tabs, and eight themes. Services, Disk Space and the rest are on the way.
+> purrtop is early. Right now it has the app shell, a live Summary dashboard, a Performance page for CPU, memory, battery, thermals, disks, network and GPUs, the Processes page, a System Info page with Hardware, Software, Network and Diagnostics tabs, a Startup apps page, and eight themes. Users, Services, Disk Space and the rest are on the way.
 
 ## What it does right now
 
@@ -42,6 +42,13 @@ I wanted something closer to Windows Task Manager (or System Informer) on Linux,
   - Connected Wi-Fi also shows the network name, Wi-Fi generation, band, signal and link rates. This part needs `iw` installed (`sudo pacman -S iw` on Arch) and is skipped without it
   - Diagnostics: failed systemd units, error messages since boot (grouped, so one noisy app doesn't bury everything else), crashes from the last 7 days, and anything killed for running out of memory. It reads the journal when you open the tab, and the Refresh button reads it again
   - Serial numbers and RAM slot details need root, so they're not shown
+- A Startup apps page for everything in your autostart folders (`~/.config/autostart` and `/etc/xdg/autostart`):
+  - Flip the switch on a row to turn it on or off for your next login. Changes only apply when you log in again, because that's when your desktop reads these files
+  - Turning off a system entry writes your own copy with `Hidden=true` instead of touching `/etc`. If an entry is a link to an app launcher, purrtop swaps the link for a real file, so the launcher and your app menu stay as they were
+  - Status shows whether each one is running, failed or finished. This comes from systemd's autostart units, which COSMIC, KDE and GNOME all use
+  - Start or stop an entry right now from the right-click menu, open its file location, or copy its command
+  - Entries for other desktops (KDE-only stuff on COSMIC, for example) are folded into a "Not started here" group
+- File → Run new task (`Ctrl+N`) to start any command, like Windows Task Manager's Run dialog. It keeps running after you close purrtop
 - Status bar with the current readings and a quick theme picker
 - Eight built-in themes: Neon, Rainbow, Cotton Candy, Sunset, Matcha, Midnight, Phosphor and Graphite
 - File / View / Help menu bar, with themes under View → Theme
@@ -68,11 +75,14 @@ If the window doesn't open, run `vulkaninfo --summary` to check your Vulkan setu
 | Keys | Action |
 |---|---|
 | `Ctrl+Q` | Quit |
+| `Ctrl+N` | Run new task |
 | `Alt+Down` / `Alt+Up` | Next / previous page |
 
 On the Performance page, `Up` and `Down` move through the device list.
 
 On the System Info page, `Ctrl+Tab` and `Ctrl+Shift+Tab` switch tabs.
+
+On the Startup apps page, `Up`, `Down`, `Home` and `End` move the selection, `Space` turns the selected entry on or off, and `F5` reads the folders again.
 
 On the Processes page:
 

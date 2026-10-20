@@ -6,6 +6,7 @@
 - Main window with a title bar, File / View / Help menus, a page sidebar and a status bar
 - Help → About dialog with the version and a link to pinkpixel.dev
 - purrtop logo in the title bar and About dialog
+- File → Run new task (`Ctrl+N`) starts a command, detached from purrtop so it keeps running after you close it. It checks the program exists first and tells you right in the dialog if it doesn't
 
 ### 📊 Summary
 - Dashboard that fills the window: LED columns for CPU, clock, temperature and GPU, a CPU history chart (utilization, kernel time, temperature), the busiest processes, a memory chart, and cards for system pressure, network, disk and GPUs
@@ -46,6 +47,16 @@
 - Diagnostics: failed system and user units, error messages since boot grouped by source and message with a count and when each last happened (newest first), crashes from the last 7 days with the signal and PID, and out-of-memory kills from the kernel or systemd-oomd
 - Diagnostics reads the journal when you open the tab, and again when you click Refresh
 - `Ctrl+Tab` and `Ctrl+Shift+Tab` switch tabs
+
+### 🚀 Startup apps
+- New Startup apps page listing every XDG autostart entry from `~/.config/autostart` and `/etc/xdg/autostart`, with its source, status and command
+- A switch on each row turns an entry on or off for your next login. Turning off a system entry writes your own copy with `Hidden=true`, so nothing under `/etc` is touched
+- Entries that are links to an app launcher get replaced by a real file when you change them, so the launcher itself (and your app menu) stays the same
+- Status comes from each entry's `app-…@autostart.service` unit: running, finished, failed, or not running. Links to files that are gone show as File missing
+- Entries that never start here (other desktops, GNOME session only, or skipped by systemd) sit in a folded "Not started here" group
+- Detail strip with the file, where it links to, the unit, delay and description
+- Right-click menu: turn on or off, start now, stop now, open file location, copy command
+- Keyboard: arrows, Home and End to move, Space to turn the selected entry on or off, F5 to refresh
 
 ### 📊 Summary
 - Pressure meters each take the color of their own level

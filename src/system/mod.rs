@@ -1,5 +1,6 @@
 //! Everything purrtop reads about the machine, straight from `/proc` and `/sys`.
 
+pub mod autostart;
 pub mod battery;
 pub mod control;
 pub mod cpu;
@@ -12,6 +13,7 @@ pub mod gpu;
 pub mod hardware;
 pub mod history;
 pub mod io;
+pub mod launch;
 pub mod memory;
 pub mod monitor;
 pub mod net_info;

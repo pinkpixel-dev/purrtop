@@ -6,7 +6,7 @@ use gpui_kit::*;
 
 use crate::app_info;
 use crate::theme::Themes;
-use crate::ui::{About, Quit, SwitchTheme};
+use crate::ui::{About, Quit, RunTask, SwitchTheme};
 
 pub fn install(cx: &mut App) {
     let themes = Themes::global(cx);
@@ -18,7 +18,7 @@ pub fn install(cx: &mut App) {
         .collect();
 
     let menus = [
-        Menu::new("File").items([MenuItem::action("Quit", Quit)]),
+        Menu::new("File").items([MenuItem::action("Run new task…", RunTask), MenuItem::separator(), MenuItem::action("Quit", Quit)]),
         Menu::new("View").items([MenuItem::submenu(Menu::new("Theme").items(theme_items))]),
         Menu::new("Help").items([MenuItem::action(format!("About {}", app_info::NAME), About)]),
     ];

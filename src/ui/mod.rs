@@ -3,7 +3,9 @@ mod charts;
 mod page;
 mod performance;
 mod processes;
+mod run_task;
 mod sidebar;
+mod startup;
 mod status_bar;
 mod summary;
 mod system_info;
@@ -19,6 +21,7 @@ pub use page::Page;
 
 use self::performance::PerformancePage;
 use self::processes::ProcessesPage;
+use self::startup::StartupPage;
 use self::system_info::SystemInfoPage;
 
 use crate::settings::Settings;
@@ -27,7 +30,7 @@ use crate::theme::{self, Themes};
 
 const KEY_CONTEXT: &str = "Purrtop";
 
-actions!(purrtop, [Quit, About, NextPage, PreviousPage]);
+actions!(purrtop, [Quit, About, NextPage, PreviousPage, RunTask]);
 
 /// Switches to the theme at this index, in menu order.
 #[derive(Clone, PartialEq, Deserialize, Action)]
@@ -37,12 +40,14 @@ pub struct SwitchTheme(pub usize);
 pub fn init(cx: &mut App) {
     cx.bind_keys([
         KeyBinding::new("ctrl-q", Quit, None),
+        KeyBinding::new("ctrl-n", RunTask, Some(KEY_CONTEXT)),
         KeyBinding::new("alt-down", NextPage, Some(KEY_CONTEXT)),
         KeyBinding::new("alt-up", PreviousPage, Some(KEY_CONTEXT)),
     ]);
     performance::init(cx);
     processes::init(cx);
     system_info::init(cx);
+    startup::init(cx);
     cx.on_action(|_: &Quit, cx| cx.quit());
     // App-wide so the menu bar and the status bar picker both reach it.
     cx.on_action(|action: &SwitchTheme, cx| {
@@ -58,6 +63,7 @@ pub struct Purrtop {
     performance: Entity<PerformancePage>,
     processes: Entity<ProcessesPage>,
     system_info: Entity<SystemInfoPage>,
+    startup: Entity<StartupPage>,
     menu_bar: Entity<AppMenuBar>,
     page: Page,
     _subscriptions: Vec<Subscription>,
@@ -69,6 +75,7 @@ impl Purrtop {
         let performance = cx.new(|cx| PerformancePage::new(monitor.clone(), cx));
         let processes = cx.new(|cx| ProcessesPage::new(monitor.clone(), window, cx));
         let system_info = cx.new(|cx| SystemInfoPage::new(monitor.clone(), cx));
+        let startup = cx.new(|cx| StartupPage::new(window, cx));
         let menu_bar = AppMenuBar::new(cx);
         let subscriptions = vec![
             cx.observe(&monitor, |_, _, cx| cx.notify()),
@@ -78,7 +85,7 @@ impl Purrtop {
         let focus_handle = cx.focus_handle();
         focus_handle.focus(window, cx);
 
-        Self { focus_handle, monitor, performance, processes, system_info, menu_bar, page: Page::default(), _subscriptions: subscriptions }
+        Self { focus_handle, monitor, performance, processes, system_info, startup, menu_bar, page: Page::default(), _subscriptions: subscriptions }
     }
 
     /// Refreshes the menu check marks and remembers the pick for next launch.
@@ -95,6 +102,7 @@ impl Purrtop {
         self.performance.update(cx, |performance, cx| performance.set_active(page == Page::Performance, window, cx));
         self.processes.update(cx, |processes, cx| processes.set_active(page == Page::Processes, cx));
         self.system_info.update(cx, |system_info, cx| system_info.set_active(page == Page::SystemInfo, window, cx));
+        self.startup.update(cx, |startup, cx| startup.set_active(page == Page::Startup, window, cx));
         cx.notify();
     }
 
@@ -117,12 +125,17 @@ impl Purrtop {
         about::open(window, cx);
     }
 
+    fn run_task(&mut self, _: &RunTask, window: &mut Window, cx: &mut Context<Self>) {
+        run_task::open(window, cx);
+    }
+
     fn render_page(&self, window: &Window, cx: &mut Context<Self>) -> AnyElement {
         match self.page {
             Page::Summary => summary::render(self.monitor.read(cx), window, cx),
             Page::Performance => self.performance.clone().into_any_element(),
             Page::Processes => self.processes.clone().into_any_element(),
             Page::SystemInfo => self.system_info.clone().into_any_element(),
+            Page::Startup => self.startup.clone().into_any_element(),
         }
     }
 }
@@ -141,6 +154,7 @@ impl Render for Purrtop {
             .on_action(cx.listener(Self::next_page))
             .on_action(cx.listener(Self::previous_page))
             .on_action(cx.listener(Self::about))
+            .on_action(cx.listener(Self::run_task))
             .size_full()
             .bg(cx.theme().background)
             .text_color(cx.theme().foreground)
