@@ -115,6 +115,7 @@ The first release.
 
 ### 📦 Packaging
 - AUR package (`packaging/aur/PKGBUILD`) that installs purrtop, its admin helper, the polkit policy, the launcher, the icons and the license
+- Published on crates.io, so `cargo install purrtop` works on any distro
 
 ### 🏷️ Versioning
 - First public release as 1.0.0

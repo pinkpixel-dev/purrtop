@@ -96,6 +96,14 @@ yay -S purrtop
 
 (`paru -S purrtop` works too.) The package installs the admin helper and polkit policy, so admin actions only ask for your password once every few minutes, and purrtop shows up in your app menu.
 
+On any other distro, install it with Cargo (see [Requirements](#requirements) first):
+
+```bash
+cargo install purrtop
+```
+
+That puts `purrtop` in `~/.cargo/bin`. It's the same app, with two differences: there's no app menu launcher, and admin actions ask for your password every time, since the helper only kicks in when it's installed to `/usr/lib/purrtop` with its polkit policy. If you want to package purrtop for another distro, the launcher, icons and policy are in the crate's `data/` folder.
+
 ## Build and run
 
 ```bash

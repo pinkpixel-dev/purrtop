@@ -6,8 +6,15 @@ description = "A colorful system monitor and task manager for Linux, built with 
 license = "Apache-2.0"
 authors = ["Pink Pixel <admin@pinkpixel.dev>"]
 repository = "https://github.com/pinkpixel-dev/purrtop"
-publish = false
+homepage = "https://pinkpixel.dev"
+readme = "README.md"
+rust-version = "1.92"
+keywords = ["system-monitor", "task-manager", "linux", "gpui", "process"]
+categories = ["gui", "os::linux-apis"]
 default-run = "purrtop"
+# What `cargo build` needs (themes and the logo are embedded), plus the
+# launcher, icons and polkit policy for anyone packaging it.
+include = ["src/**/*", "themes/*.json", "data/**/*", "logo.png", "README.md", "CHANGELOG.md", "LICENSE"]
 
 [dependencies]
 gpui-kit = "0.7.1"
