@@ -86,6 +86,16 @@ I wanted something closer to Windows Task Manager (or System Informer) on Linux,
 - Rust 1.92 or newer (same as the GPUI Kit apps it shares a stack with)
 - `gio` (from GLib, already on most desktops) for Move to Trash on the Disk Space page
 
+## Install
+
+On Arch Linux and Arch-based distros, install it from the AUR:
+
+```bash
+yay -S purrtop
+```
+
+(`paru -S purrtop` works too.) The package installs the admin helper and polkit policy, so admin actions only ask for your password once every few minutes, and purrtop shows up in your app menu.
+
 ## Build and run
 
 ```bash

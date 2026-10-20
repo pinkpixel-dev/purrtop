@@ -1,6 +1,6 @@
 [package]
 name = "purrtop"
-version = "0.1.0"
+version = "1.0.0"
 edition = "2024"
 description = "A colorful system monitor and task manager for Linux, built with GPUI Kit"
 license = "Apache-2.0"

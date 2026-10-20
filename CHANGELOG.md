@@ -1,6 +1,8 @@
 # Changelog
 
-## 0.1.0 - Unreleased
+## 1.0.0 - October 20, 2026
+
+The first release.
 
 ### 🐱 App shell
 - Main window with a title bar, File / View / Help menus, a page sidebar and a status bar
@@ -110,6 +112,12 @@
 
 ### 📊 Summary
 - Pressure meters each take the color of their own level
+
+### 📦 Packaging
+- AUR package (`packaging/aur/PKGBUILD`) that installs purrtop, its admin helper, the polkit policy, the launcher, the icons and the license
+
+### 🏷️ Versioning
+- First public release as 1.0.0
 
 ### 🎨 Themes
 - Eight built-in themes: Neon, Rainbow, Cotton Candy, Sunset, Matcha, Midnight, Phosphor and Graphite
