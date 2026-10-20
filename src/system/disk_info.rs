@@ -95,6 +95,11 @@ pub fn read_volumes(disks: &[String]) -> Vec<Volume> {
         .collect()
 }
 
+/// Where every `/dev` filesystem is mounted, for picking what to scan.
+pub fn mount_points() -> Vec<String> {
+    std::fs::read_to_string("/proc/mounts").map(|text| parse_mounts(&text).into_iter().map(|(_, mount, _)| mount).collect()).unwrap_or_default()
+}
+
 /// `(source, mount point, filesystem)` for every `/dev` mount. A point that's
 /// listed twice is kept once.
 fn parse_mounts(text: &str) -> Vec<(String, String, String)> {

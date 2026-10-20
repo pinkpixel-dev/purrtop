@@ -5331,6 +5331,7 @@ dependencies = [
  "futures-lite",
  "gpui-kit",
  "libc",
+ "rayon",
  "serde",
  "serde_json",
  "zbus",

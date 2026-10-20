@@ -1,5 +1,6 @@
 mod about;
 mod charts;
+mod disk_space;
 mod page;
 mod performance;
 mod ports;
@@ -22,6 +23,7 @@ use serde::Deserialize;
 
 pub use page::Page;
 
+use self::disk_space::DiskSpacePage;
 use self::performance::PerformancePage;
 use self::ports::PortsPage;
 use self::processes::ProcessesPage;
@@ -62,6 +64,7 @@ pub fn init(cx: &mut App) {
     users::init(cx);
     services::init(cx);
     ports::init(cx);
+    disk_space::init(cx);
     cx.on_action(|_: &Quit, cx| cx.quit());
     // App-wide so the menu bar and the status bar picker both reach it.
     cx.on_action(|action: &SwitchTheme, cx| {
@@ -81,6 +84,7 @@ pub struct Purrtop {
     users: Entity<UsersPage>,
     services: Entity<ServicesPage>,
     ports: Entity<PortsPage>,
+    disk_space: Entity<DiskSpacePage>,
     menu_bar: Entity<AppMenuBar>,
     page: Page,
     _subscriptions: Vec<Subscription>,
@@ -96,6 +100,7 @@ impl Purrtop {
         let users = cx.new(|cx| UsersPage::new(monitor.clone(), window, cx));
         let services = cx.new(|cx| ServicesPage::new(window, cx));
         let ports = cx.new(|cx| PortsPage::new(monitor.clone(), window, cx));
+        let disk_space = cx.new(|cx| DiskSpacePage::new(window, cx));
         let menu_bar = AppMenuBar::new(cx);
         let subscriptions = vec![
             cx.observe(&monitor, |_, _, cx| cx.notify()),
@@ -105,7 +110,7 @@ impl Purrtop {
         let focus_handle = cx.focus_handle();
         focus_handle.focus(window, cx);
 
-        Self { focus_handle, monitor, performance, processes, system_info, startup, users, services, ports, menu_bar, page: Page::default(), _subscriptions: subscriptions }
+        Self { focus_handle, monitor, performance, processes, system_info, startup, users, services, ports, disk_space, menu_bar, page: Page::default(), _subscriptions: subscriptions }
     }
 
     /// Refreshes the menu check marks and remembers the pick for next launch.
@@ -126,6 +131,7 @@ impl Purrtop {
         self.users.update(cx, |users, cx| users.set_active(page == Page::Users, window, cx));
         self.services.update(cx, |services, cx| services.set_active(page == Page::Services, window, cx));
         self.ports.update(cx, |ports, cx| ports.set_active(page == Page::Ports, window, cx));
+        self.disk_space.update(cx, |disk_space, cx| disk_space.set_active(page == Page::DiskSpace, window, cx));
         cx.notify();
     }
 
@@ -167,6 +173,7 @@ impl Purrtop {
             Page::Users => self.users.clone().into_any_element(),
             Page::Services => self.services.clone().into_any_element(),
             Page::Ports => self.ports.clone().into_any_element(),
+            Page::DiskSpace => self.disk_space.clone().into_any_element(),
         }
     }
 }
