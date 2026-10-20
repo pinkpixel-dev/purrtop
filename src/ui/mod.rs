@@ -1,6 +1,7 @@
 mod about;
 mod charts;
 mod page;
+mod performance;
 mod processes;
 mod sidebar;
 mod status_bar;
@@ -15,6 +16,7 @@ use serde::Deserialize;
 
 pub use page::Page;
 
+use self::performance::PerformancePage;
 use self::processes::ProcessesPage;
 
 use crate::settings::Settings;
@@ -36,6 +38,7 @@ pub fn init(cx: &mut App) {
         KeyBinding::new("alt-down", NextPage, Some(KEY_CONTEXT)),
         KeyBinding::new("alt-up", PreviousPage, Some(KEY_CONTEXT)),
     ]);
+    performance::init(cx);
     processes::init(cx);
     cx.on_action(|_: &Quit, cx| cx.quit());
     // App-wide so the menu bar and the status bar picker both reach it.
@@ -49,6 +52,7 @@ pub fn init(cx: &mut App) {
 pub struct Purrtop {
     focus_handle: FocusHandle,
     monitor: Entity<Monitor>,
+    performance: Entity<PerformancePage>,
     processes: Entity<ProcessesPage>,
     menu_bar: Entity<AppMenuBar>,
     page: Page,
@@ -58,6 +62,7 @@ pub struct Purrtop {
 impl Purrtop {
     pub fn new(window: &mut Window, cx: &mut Context<Self>) -> Self {
         let monitor = cx.new(Monitor::new);
+        let performance = cx.new(|cx| PerformancePage::new(monitor.clone(), cx));
         let processes = cx.new(|cx| ProcessesPage::new(monitor.clone(), window, cx));
         let menu_bar = AppMenuBar::new(cx);
         let subscriptions = vec![
@@ -68,7 +73,7 @@ impl Purrtop {
         let focus_handle = cx.focus_handle();
         focus_handle.focus(window, cx);
 
-        Self { focus_handle, monitor, processes, menu_bar, page: Page::default(), _subscriptions: subscriptions }
+        Self { focus_handle, monitor, performance, processes, menu_bar, page: Page::default(), _subscriptions: subscriptions }
     }
 
     /// Refreshes the menu check marks and remembers the pick for next launch.
@@ -80,25 +85,26 @@ impl Purrtop {
         }
     }
 
-    fn set_page(&mut self, page: Page, cx: &mut Context<Self>) {
+    fn set_page(&mut self, page: Page, window: &mut Window, cx: &mut Context<Self>) {
         self.page = page;
+        self.performance.update(cx, |performance, cx| performance.set_active(page == Page::Performance, window, cx));
         self.processes.update(cx, |processes, cx| processes.set_active(page == Page::Processes, cx));
         cx.notify();
     }
 
-    fn step_page(&mut self, forward: bool, cx: &mut Context<Self>) {
+    fn step_page(&mut self, forward: bool, window: &mut Window, cx: &mut Context<Self>) {
         let pages = Page::ALL;
         let current = pages.iter().position(|&page| page == self.page).unwrap_or(0);
         let next = if forward { (current + 1) % pages.len() } else { (current + pages.len() - 1) % pages.len() };
-        self.set_page(pages[next], cx);
+        self.set_page(pages[next], window, cx);
     }
 
-    fn next_page(&mut self, _: &NextPage, _: &mut Window, cx: &mut Context<Self>) {
-        self.step_page(true, cx);
+    fn next_page(&mut self, _: &NextPage, window: &mut Window, cx: &mut Context<Self>) {
+        self.step_page(true, window, cx);
     }
 
-    fn previous_page(&mut self, _: &PreviousPage, _: &mut Window, cx: &mut Context<Self>) {
-        self.step_page(false, cx);
+    fn previous_page(&mut self, _: &PreviousPage, window: &mut Window, cx: &mut Context<Self>) {
+        self.step_page(false, window, cx);
     }
 
     fn about(&mut self, _: &About, window: &mut Window, cx: &mut Context<Self>) {
@@ -108,6 +114,7 @@ impl Purrtop {
     fn render_page(&self, window: &Window, cx: &mut Context<Self>) -> AnyElement {
         match self.page {
             Page::Summary => summary::render(self.monitor.read(cx), window, cx),
+            Page::Performance => self.performance.clone().into_any_element(),
             Page::Processes => self.processes.clone().into_any_element(),
         }
     }

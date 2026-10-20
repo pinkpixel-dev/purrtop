@@ -5,15 +5,17 @@ use gpui_kit::assets::IconName as CatalogIcon;
 pub enum Page {
     #[default]
     Summary,
+    Performance,
     Processes,
 }
 
 impl Page {
-    pub const ALL: [Page; 2] = [Page::Summary, Page::Processes];
+    pub const ALL: [Page; 3] = [Page::Summary, Page::Performance, Page::Processes];
 
     pub fn label(self) -> &'static str {
         match self {
             Page::Summary => "Summary",
+            Page::Performance => "Performance",
             Page::Processes => "Processes",
         }
     }
@@ -21,6 +23,7 @@ impl Page {
     pub fn icon(self) -> CatalogIcon {
         match self {
             Page::Summary => CatalogIcon::LayoutDashboard,
+            Page::Performance => CatalogIcon::Activity,
             Page::Processes => CatalogIcon::ListTree,
         }
     }

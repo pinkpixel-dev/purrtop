@@ -13,6 +13,13 @@
 - The top processes list moves under the CPU chart in narrow windows
 - GPUs are read only from sysfs, so a sleeping laptop GPU stays asleep
 
+### 📈 Performance
+- New Performance page with a device list (CPU and Memory for now) that shows each one's reading and a sparkline
+- CPU view: a meter, a chart for every logical processor with kernel time, and P-core and E-core labels on hybrid Intel chips
+- CPU stats and specs: speed, temperature, processes, threads, up time, load, base and max speed, sockets, cores, virtualization, frequency driver and governor
+- Memory view: use and swap over time, a bar split into in use, cached and free, and commit charge
+- `Up` and `Down` move through the device list, and the list drops its sparklines in narrow windows
+
 ### 🐾 Processes
 - New Processes page with every process, grouped into Applications and Background with child processes under their parents, or as one flat list
 - Columns for PID, status, user, CPU, memory, disk read and write, threads, virtual memory, open files, nice and the full command line; click a header to sort, drag edges to resize

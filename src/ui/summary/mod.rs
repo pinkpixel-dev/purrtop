@@ -4,7 +4,7 @@ mod cards;
 mod cpu;
 mod gauges;
 mod memory;
-mod panel;
+pub(super) mod panel;
 mod top;
 
 use gpui_kit::component::StyledExt as _;

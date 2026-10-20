@@ -20,6 +20,10 @@ pub struct Monitor {
     pub kernel: History,
     pub temperature: History,
     pub memory: History,
+    pub swap: History,
+    /// One history per logical processor, and the kernel's part of each.
+    pub cores: Vec<History>,
+    pub core_kernel: Vec<History>,
     pub received: History,
     pub sent: History,
     pub disk_read: History,
@@ -64,6 +68,9 @@ impl Monitor {
             kernel: History::default(),
             temperature: History::default(),
             memory: History::default(),
+            swap: History::default(),
+            cores: Vec::new(),
+            core_kernel: Vec::new(),
             received: History::default(),
             sent: History::default(),
             disk_read: History::default(),
@@ -93,6 +100,9 @@ impl Monitor {
                     self.temperature.push(celsius);
                 }
                 self.memory.push(snapshot.memory.used_fraction());
+                self.swap.push(snapshot.memory.swap_fraction());
+                push_each(&mut self.cores, &snapshot.cores);
+                push_each(&mut self.core_kernel, &snapshot.core_kernel);
                 self.received.push(snapshot.network.received as f32);
                 self.sent.push(snapshot.network.sent as f32);
                 self.disk_read.push(snapshot.disk.read as f32);
@@ -102,5 +112,15 @@ impl Monitor {
             }
             Err(err) => self.error = Some(format!("Couldn't read /proc: {err}").into()),
         }
+    }
+}
+
+/// Pushes one reading into each history, growing the list if a CPU came online.
+fn push_each(histories: &mut Vec<History>, values: &[f32]) {
+    if histories.len() < values.len() {
+        histories.resize_with(values.len(), History::default);
+    }
+    for (history, &value) in histories.iter_mut().zip(values) {
+        history.push(value);
     }
 }

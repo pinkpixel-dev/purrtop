@@ -2,6 +2,7 @@
 
 pub mod control;
 pub mod cpu;
+pub mod cpu_info;
 pub mod details;
 pub mod format;
 pub mod gpu;
@@ -19,6 +20,7 @@ use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use cpu::StatTimes;
+use cpu_info::CpuInfo;
 use gpu::{GpuDevice, GpuReading};
 use io::{DiskCounters, DiskRates, NetCounters, NetRates};
 use memory::Memory;
@@ -38,6 +40,10 @@ pub struct Snapshot {
     pub kernel: f32,
     /// CPU use per logical processor, from 0 to 1.
     pub cores: Vec<f32>,
+    /// The kernel's part of each entry in `cores`.
+    pub core_kernel: Vec<f32>,
+    /// Read once at startup and shared by every snapshot.
+    pub cpu_info: Arc<CpuInfo>,
     pub clock: Option<Clock>,
     /// CPU package temperature in °C.
     pub temperature: Option<f32>,
@@ -65,6 +71,7 @@ pub struct Reader {
     processes: ProcessScanner,
     temperature: Option<PathBuf>,
     gpus: Vec<GpuDevice>,
+    cpu_info: Arc<CpuInfo>,
 }
 
 impl Reader {
@@ -82,6 +89,7 @@ impl Reader {
             processes,
             temperature: sensors::find_cpu_temperature(),
             gpus: GpuDevice::discover(&pci_ids),
+            cpu_info: Arc::new(CpuInfo::read()),
         }
     }
 
@@ -93,12 +101,14 @@ impl Reader {
 
         let cpu = stat.all.usage_since(self.previous.all);
         let kernel = stat.all.kernel_since(self.previous.all);
-        let cores = stat
+        let (cores, core_kernel) = stat
             .cores
             .iter()
             .enumerate()
-            .map(|(ix, core)| self.previous.cores.get(ix).map_or(0., |earlier| core.usage_since(*earlier)))
-            .collect();
+            .map(|(ix, core)| {
+                self.previous.cores.get(ix).map_or((0., 0.), |&earlier| (core.usage_since(earlier), core.kernel_since(earlier)))
+            })
+            .unzip();
         let machine_ticks = stat.all.total.saturating_sub(self.previous.all.total);
         self.previous = stat;
 
@@ -117,6 +127,8 @@ impl Reader {
             cpu,
             kernel,
             cores,
+            core_kernel,
+            cpu_info: self.cpu_info.clone(),
             clock: sensors::read_clock(),
             temperature: self.temperature.as_deref().and_then(sensors::read_celsius),
             memory: Memory::read()?,

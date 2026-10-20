@@ -44,7 +44,7 @@ impl Purrtop {
             .when(!selected, |this| this.text_color(theme.sidebar_foreground).hover(|style| style.bg(theme.list_hover)))
             .child(Icon::new(page.icon()).small().text_color(if selected { theme.primary } else { theme.muted_foreground }))
             .child(div().flex_1().min_w_0().truncate().child(page.label()))
-            .on_click(cx.listener(move |this, _, _, cx| this.set_page(page, cx)))
+            .on_click(cx.listener(move |this, _, window, cx| this.set_page(page, window, cx)))
             .into_any_element()
     }
 }

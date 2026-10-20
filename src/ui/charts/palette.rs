@@ -5,11 +5,14 @@ use gpui_kit::*;
 #[derive(Clone, Copy)]
 pub struct Palette {
     pub cpu: Hsla,
+    /// Efficiency cores on hybrid CPUs. Performance cores use `cpu`.
+    pub efficiency: Hsla,
     pub kernel: Hsla,
     pub clock: Hsla,
     pub temperature: Hsla,
     pub gpu: Hsla,
     pub memory: Hsla,
+    pub swap: Hsla,
     pub received: Hsla,
     pub sent: Hsla,
     pub read: Hsla,
@@ -22,11 +25,13 @@ impl Palette {
         let theme = cx.theme();
         Self {
             cpu: theme.green,
+            efficiency: theme.cyan,
             kernel: theme.blue,
             clock: theme.red,
             temperature: theme.yellow,
             gpu: theme.cyan,
             memory: theme.magenta,
+            swap: theme.blue,
             received: theme.cyan,
             sent: theme.red,
             read: theme.blue,

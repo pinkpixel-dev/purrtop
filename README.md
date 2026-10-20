@@ -10,7 +10,7 @@ purrtop is a colorful system monitor and task manager for Linux. It's a desktop 
 
 I wanted something closer to Windows Task Manager (or System Informer) on Linux, but prettier, with themes that actually have some color in them.
 
-> purrtop is early. Right now it has the app shell, a live Summary dashboard, the Processes page, and eight themes. Performance, Services, Disk Space and the rest are on the way.
+> purrtop is early. Right now it has the app shell, a live Summary dashboard, a Performance page for CPU and memory, the Processes page, and eight themes. Disks, network and GPUs on the Performance page are next, then Services, Disk Space and the rest.
 
 ## What it does right now
 
@@ -19,6 +19,9 @@ I wanted something closer to Windows Task Manager (or System Informer) on Linux,
   - A CPU chart with utilization, kernel time and temperature over the last two minutes
   - The busiest processes right now
   - A memory chart, plus cards for system pressure, network, disk and GPUs
+- A Performance page with a device list on the left and the selected device on the right:
+  - CPU: a chart for every logical processor (P-cores and E-cores are labeled on hybrid Intel chips), plus speed, temperature, process and thread counts, load and the CPU's specs
+  - Memory: use and swap over time, a bar showing what RAM is holding, and commit charge
 - GPUs are read in a way that never wakes a sleeping laptop GPU. The tradeoff is that NVIDIA cards only show whether they're awake, not usage
 - A Processes page that works a lot like Windows Task Manager's Details tab:
   - Applications and Background groups with child processes folded under their parents, or one flat list
@@ -54,6 +57,8 @@ If the window doesn't open, run `vulkaninfo --summary` to check your Vulkan setu
 |---|---|
 | `Ctrl+Q` | Quit |
 | `Alt+Down` / `Alt+Up` | Next / previous page |
+
+On the Performance page, `Up` and `Down` move through the device list.
 
 On the Processes page:
 
